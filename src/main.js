@@ -90,6 +90,32 @@ let monsters = [];
 let droppedItems = [];
 let nextMonsterSpawn = 0;
 
+let playerCoins = 0;
+let playerMaxHP = 100;
+let powerups = { sneakers: 0, dumbbell: 0, dagger: 0 };
+
+function addPowerup(type) {
+    if (powerups[type] !== undefined) {
+        powerups[type]++;
+        if (type === 'dumbbell') {
+            playerMaxHP += 10;
+            playerHP += 10;
+            document.getElementById('hp-bar').style.width = (playerHP / playerMaxHP * 100) + '%';
+        }
+        updatePowerupUI();
+    }
+}
+
+function updatePowerupUI() {
+    const container = document.getElementById('powerup-ui');
+    if (!container) return;
+    let html = '';
+    if (powerups.sneakers > 0) html += `<div>👟 Sneakers x${powerups.sneakers}</div>`;
+    if (powerups.dumbbell > 0) html += `<div>🏋️ Dumbbell x${powerups.dumbbell}</div>`;
+    if (powerups.dagger > 0) html += `<div>🗡️ Crimson Dagger x${powerups.dagger}</div>`;
+    container.innerHTML = html;
+}
+
 function updateInventoryUI() {
     // 1. Update Crafting Recipes Availability
     const woodCount = countItem('wood');
@@ -461,7 +487,7 @@ function init() {
                 break;
             case 'Space':
                 if (canJump === true && playerStamina >= 10) {
-                    velocity.y += 15;
+                    velocity.y += 15 + (powerups.sneakers * 2); // Sneakers add jump height
                     playerStamina -= 10;
                 }
                 canJump = false;
@@ -605,6 +631,32 @@ function init() {
         objects.push(rock);
     }
 
+    // Chest Generation
+    const chestGeo = new THREE.BoxGeometry(1.5, 1, 1.5);
+    for (let i = 0; i < 30; i++) {
+        let chestType, chestColor, cost, powerup;
+        const r = Math.random();
+        if (r < 0.6) {
+            chestType = 'chest_white'; chestColor = 0xffffff; cost = 25; powerup = 'sneakers';
+        } else if (r < 0.9) {
+            chestType = 'chest_blue'; chestColor = 0x4444ff; cost = 50; powerup = 'dumbbell';
+        } else {
+            chestType = 'chest_gold'; chestColor = 0xffd700; cost = 100; powerup = 'dagger';
+        }
+        const chestMat = new THREE.MeshLambertMaterial({ color: chestColor });
+        const chest = new THREE.Mesh(chestGeo, chestMat);
+        chest.position.x = Math.random() * 200 - 100;
+        chest.position.z = Math.random() * 200 - 100;
+        const groundHeight = Math.sin(chest.position.x / 20) * Math.cos(chest.position.z / 20) * 5;
+        chest.position.y = groundHeight + 0.5;
+        chest.rotation.y = Math.random() * Math.PI;
+        chest.castShadow = true;
+        chest.receiveShadow = true;
+        chest.userData = { type: chestType, cost: cost, powerup: powerup };
+        scene.add(chest);
+        objects.push(chest);
+    }
+
     // Renderer Setup
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -695,6 +747,29 @@ function init() {
                     return; // Don't punch the workbench when opening it
                 }
 
+                // Chest Interaction
+                if (obj.userData && obj.userData.type.startsWith('chest_')) {
+                    if (playerCoins >= obj.userData.cost) {
+                        playerCoins -= obj.userData.cost;
+                        document.getElementById('coin-ui').innerText = '💰 ' + playerCoins;
+                        
+                        // Spawn powerup
+                        spawnDroppedItem(obj.userData.powerup, obj.position);
+                        
+                        // Remove chest
+                        scene.remove(obj);
+                        objects.splice(objects.indexOf(obj), 1);
+                    } else {
+                        // Flash red
+                        const oldColor = obj.material.color.getHex();
+                        obj.material.color.setHex(0xff0000);
+                        setTimeout(() => {
+                            if (obj.parent) obj.material.color.setHex(oldColor);
+                        }, 200);
+                    }
+                    return;
+                }
+
                 if (obj !== floor) { // Can't mine floor in this prototype easily
                     let damage = 0.15;
                     let mobDamage = 5; // Base hand damage
@@ -709,6 +784,13 @@ function init() {
 
                     if (obj.userData.type === 'monster') {
                         obj.userData.hp -= mobDamage;
+                        
+                        // Lifesteal from Dagger
+                        if (powerups.dagger > 0) {
+                            playerHP = Math.min(playerMaxHP, playerHP + powerups.dagger);
+                            document.getElementById('hp-bar').style.width = (playerHP / playerMaxHP * 100) + '%';
+                        }
+                        
                         // Visual feedback for hit
                         obj.material.color.setHex(0xffffff);
                         setTimeout(() => { if (obj.parent) obj.material.color.setHex(0xff0000); }, 100);
@@ -806,6 +888,14 @@ function spawnDroppedItem(type, position) {
     } else if (type === 'apple') {
         geo = new THREE.SphereGeometry(0.2);
         mat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+    } else if (type === 'coin') {
+        geo = new THREE.CylinderGeometry(0.2, 0.2, 0.05, 8);
+        geo.rotateX(Math.PI / 2); // coin stands up
+        mat = new THREE.MeshLambertMaterial({ color: 0xffd700 }); // Gold
+    } else if (type === 'sneakers' || type === 'dumbbell' || type === 'dagger') {
+        geo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+        const pColor = type === 'sneakers' ? 0xffffff : (type === 'dumbbell' ? 0x555555 : 0xff0000);
+        mat = new THREE.MeshLambertMaterial({ color: pColor });
     } else {
         return;
     }
@@ -859,8 +949,20 @@ function updateDroppedItems(delta) {
             
             // Actually collect if within 3 units
             if (dist < 3) {
-                // Try to add to inventory
-                if (addItem(item.userData.type, 1)) {
+                let collected = false;
+                if (item.userData.type === 'coin') {
+                    playerCoins += 1;
+                    document.getElementById('coin-ui').innerText = '💰 ' + playerCoins;
+                    collected = true;
+                } else if (['sneakers', 'dumbbell', 'dagger'].includes(item.userData.type)) {
+                    addPowerup(item.userData.type);
+                    collected = true;
+                } else {
+                    // Normal inventory item
+                    collected = addItem(item.userData.type, 1);
+                }
+                
+                if (collected) {
                     scene.remove(item);
                     droppedItems.splice(i, 1);
                 }
@@ -901,6 +1003,12 @@ function updateMonsters(delta) {
             scene.remove(mob);
             objects.splice(objects.indexOf(mob), 1);
             monsters.splice(i, 1);
+            
+            // Drop 2-5 coins
+            const coinCount = Math.floor(Math.random() * 4) + 2;
+            for (let c = 0; c < coinCount; c++) {
+                spawnDroppedItem('coin', mob.position);
+            }
             continue;
         }
         
@@ -959,15 +1067,13 @@ function updateMonsters(delta) {
 
 function takeDamage(amount) {
     if (isDead) return;
-    
     playerHP -= amount;
     const hpBar = document.getElementById('hp-bar');
-    hpBar.style.width = Math.max(0, playerHP) + '%';
+    hpBar.style.width = Math.max(0, (playerHP / playerMaxHP) * 100) + '%';
     
-    // Flash screen red
-    const originalBg = document.body.style.backgroundColor;
+    // flash red
     document.body.style.backgroundColor = 'red';
-    setTimeout(() => { document.body.style.backgroundColor = originalBg; }, 100);
+    setTimeout(() => { document.body.style.backgroundColor = ''; }, 100);
     
     if (playerHP <= 0) {
         die();
@@ -1054,8 +1160,8 @@ function animate() {
         }
         
         if (nearCampfire) {
-            playerHP = Math.min(100, playerHP + globalDelta * 2); // Heal 2 HP/s
-            document.getElementById('hp-bar').style.width = playerHP + '%';
+            playerHP = Math.min(playerMaxHP, playerHP + globalDelta * 2); // Heal 2 HP/s
+            document.getElementById('hp-bar').style.width = (playerHP / playerMaxHP * 100) + '%';
         }
 
         document.getElementById('hunger-bar').style.width = playerHunger + '%';
