@@ -59,7 +59,9 @@ function updateInventoryUI() {
     craftFloor.disabled = !(inventory.wood >= 5);
 }
 
-function equipTool(tool) {
+let currentSlot = 1;
+
+function equipTool(tool, slotIndex) {
     equippedTool = tool;
     
     // UI update
@@ -68,30 +70,60 @@ function equipTool(tool) {
         if (slot) slot.classList.remove('active');
     }
     
+    let activeSlot = slotIndex;
+    if (!activeSlot) {
+        if (tool === 'hand') activeSlot = 1;
+        else if (tool === 'pickaxe') activeSlot = 2;
+        else if (tool === 'apple') activeSlot = 3;
+        else if (tool === 'wall') activeSlot = 4;
+        else if (tool === 'floor') activeSlot = 5;
+        else activeSlot = 1;
+    }
+    currentSlot = activeSlot;
+    
+    const slotElement = document.querySelector(`.hotbar-slot:nth-child(${activeSlot})`);
+    if (slotElement) slotElement.classList.add('active');
+    
     if (pickaxeModel) pickaxeModel.visible = false;
     if (appleModel) appleModel.visible = false;
     if (ghostMesh) ghostMesh.visible = false;
 
-    if (tool === 'hand') {
-        document.querySelector('.hotbar-slot:nth-child(1)').classList.add('active');
-    } else if (tool === 'pickaxe') {
-        document.querySelector('.hotbar-slot:nth-child(2)').classList.add('active');
+    if (tool === 'pickaxe') {
         if (pickaxeModel) pickaxeModel.visible = true;
     } else if (tool === 'apple') {
-        document.querySelector('.hotbar-slot:nth-child(3)').classList.add('active');
         if (appleModel) appleModel.visible = true;
     } else if (tool === 'wall') {
-        document.querySelector('.hotbar-slot:nth-child(4)').classList.add('active');
         if (ghostMesh) {
             ghostMesh.geometry = new THREE.BoxGeometry(4, 4, 0.5);
             ghostMesh.visible = true;
         }
     } else if (tool === 'floor') {
-        document.querySelector('.hotbar-slot:nth-child(5)').classList.add('active');
         if (ghostMesh) {
             ghostMesh.geometry = new THREE.BoxGeometry(4, 0.5, 4);
             ghostMesh.visible = true;
         }
+    }
+}
+
+function selectSlot(index) {
+    if (index < 1) index = 5;
+    if (index > 5) index = 1;
+    currentSlot = index;
+    
+    if (currentSlot === 1) {
+        equipTool('hand', 1);
+    } else if (currentSlot === 2) {
+        if (hasPickaxe) equipTool('pickaxe', 2);
+        else equipTool('empty', 2);
+    } else if (currentSlot === 3) {
+        if (inventory.apple > 0) equipTool('apple', 3);
+        else equipTool('empty', 3);
+    } else if (currentSlot === 4) {
+        if (inventory.wall > 0) equipTool('wall', 4);
+        else equipTool('empty', 4);
+    } else if (currentSlot === 5) {
+        if (inventory.floor > 0) equipTool('floor', 5);
+        else equipTool('empty', 5);
     }
 }
 
@@ -263,19 +295,19 @@ function init() {
                 isSprinting = true;
                 break;
             case 'Digit1':
-                equipTool('hand');
+                selectSlot(1);
                 break;
             case 'Digit2':
-                if (hasPickaxe) equipTool('pickaxe');
+                selectSlot(2);
                 break;
             case 'Digit3':
-                if (inventory.apple > 0) equipTool('apple');
+                selectSlot(3);
                 break;
             case 'Digit4':
-                if (inventory.wall > 0) equipTool('wall');
+                selectSlot(4);
                 break;
             case 'Digit5':
-                if (inventory.floor > 0) equipTool('floor');
+                selectSlot(5);
                 break;
         }
     };
@@ -306,6 +338,15 @@ function init() {
 
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup', onKeyUp);
+    
+    document.addEventListener('wheel', (e) => {
+        if (!controls.isLocked) return;
+        if (e.deltaY > 0) {
+            selectSlot(currentSlot + 1); // scroll down
+        } else {
+            selectSlot(currentSlot - 1); // scroll up
+        }
+    });
 
     raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 2.5);
 
@@ -414,7 +455,7 @@ function init() {
                     playerHunger = Math.min(100, playerHunger + 20);
                     if (inventory.apple === 0) {
                         setTimeout(() => {
-                            equipTool('hand'); // Auto equip hand if no apples left
+                            selectSlot(currentSlot); // Auto unequip if no apples left
                             document.querySelector('.hotbar-slot:nth-child(3)').innerText = '3';
                         }, 500); // Wait for swing animation to finish roughly
                     }
@@ -438,7 +479,7 @@ function init() {
                     objects.push(buildMesh);
                     
                     if (inventory[equippedTool] === 0) {
-                        equipTool('hand');
+                        selectSlot(currentSlot);
                     }
                     updateInventoryUI();
                     return; // Don't mine when building
@@ -505,7 +546,7 @@ function init() {
         if (inventory.wood >= 10 && !hasPickaxe) {
             inventory.wood -= 10;
             hasPickaxe = true;
-            equipTool('pickaxe');
+            selectSlot(2);
             e.target.style.display = 'none';
             document.querySelector('.hotbar-slot:nth-child(2)').innerText = 'Pick';
             updateInventoryUI();
