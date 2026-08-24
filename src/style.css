@@ -1,0 +1,74 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #87CEEB;
+    font-family: sans-serif;
+}
+
+#ui-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10;
+}
+
+#crosshair {
+    width: 10px;
+    height: 10px;
+    background-color: white;
+    border-radius: 50%;
+    box-shadow: 0 0 2px rgba(0,0,0,0.5);
+    opacity: 0.8;
+}
+
+#blocker {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0,0,0,0.5);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    z-index: 20;
+    pointer-events: auto;
+    cursor: pointer;
+}
+
+#instructions {
+    text-align: center;
+}
+
+.hotbar {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 10px;
+}
+
+.hotbar-slot {
+    width: 50px;
+    height: 50px;
+    background-color: rgba(0, 0, 0, 0.5);
+    border: 2px solid #555;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-weight: bold;
+}
+.hotbar-slot.active {
+    border-color: #fff;
+    box-shadow: 0 0 10px #fff;
+}
+#inventory-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 30; display: flex; justify-content: center; align-items: center; color: white; } .inventory-container { background: #333; padding: 20px 40px; border-radius: 10px; min-width: 300px; border: 2px solid #555; } .crafting-section button { padding: 10px; background: #55a; color: white; border: none; cursor: pointer; border-radius: 5px; } .crafting-section button:disabled { background: #555; cursor: not-allowed; }
