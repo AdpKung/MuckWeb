@@ -71,4 +71,25 @@ body {
     border-color: #fff;
     box-shadow: 0 0 10px #fff;
 }
-#inventory-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 30; display: flex; justify-content: center; align-items: center; color: white; } .inventory-container { background: #333; padding: 20px 40px; border-radius: 10px; min-width: 300px; border: 2px solid #555; } .crafting-section button { padding: 10px; background: #55a; color: white; border: none; cursor: pointer; border-radius: 5px; } .crafting-section button:disabled { background: #555; cursor: not-allowed; }
+#inventory-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 30; display: flex; justify-content: center; align-items: center; }
+.mc-inventory-container { background: #c6c6c6; border: 4px solid #555; border-right-color: #222; border-bottom-color: #222; border-left-color: #fff; border-top-color: #fff; padding: 20px; min-width: 350px; image-rendering: pixelated; font-family: sans-serif; box-shadow: inset 0 0 0 2px #c6c6c6, 0 0 20px rgba(0,0,0,0.8); }
+.mc-inventory-container h2 { color: #333 !important; text-shadow: 1px 1px 0 #fff; margin-bottom: 10px; }
+.mc-inventory-container p { color: #555 !important; }
+
+.mc-crafting-area { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; }
+.mc-inventory-grid { display: grid; grid-template-columns: repeat(9, 36px); gap: 4px; background: #c6c6c6; }
+
+.mc-slot { width: 36px; height: 36px; background: #8b8b8b; border: 2px solid; border-top-color: #373737; border-left-color: #373737; border-bottom-color: #fff; border-right-color: #fff; display: flex; justify-content: center; align-items: center; position: relative; font-size: 10px; font-weight: bold; color: white; text-shadow: 1px 1px 0 #000; box-sizing: border-box; }
+.mc-slot:hover { background: #9c9c9c; }
+.mc-slot.empty { background: #8b8b8b; }
+.mc-slot .count { position: absolute; bottom: 0; right: 2px; font-size: 12px; }
+
+.mc-recipe { cursor: pointer; }
+.mc-recipe.disabled .mc-slot { opacity: 0.5; filter: grayscale(100%); cursor: not-allowed; }
+.mc-recipe:not(.disabled) .mc-slot:active { border-top-color: #fff; border-left-color: #fff; border-bottom-color: #373737; border-right-color: #373737; }
+
+/* Overwrite hotbar styles to match */
+.hotbar { gap: 4px; bottom: 10px; }
+.hotbar-slot { width: 44px; height: 44px; background: #8b8b8b; border: 2px solid; border-top-color: #373737; border-left-color: #373737; border-bottom-color: #fff; border-right-color: #fff; font-size: 12px; text-shadow: 1px 1px 0 #000; position: relative; box-sizing: border-box; }
+.hotbar-slot.active { border: 4px solid #fff; box-shadow: 0 0 5px rgba(0,0,0,0.5); }
+.hotbar-slot .count { position: absolute; bottom: 0; right: 2px; font-size: 14px; }

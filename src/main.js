@@ -43,20 +43,71 @@ let monsters = [];
 let nextMonsterSpawn = 0;
 
 function updateInventoryUI() {
-    document.getElementById('inv-wood').innerText = inventory.wood;
-    document.getElementById('inv-rock').innerText = inventory.rock;
-    document.getElementById('inv-apple').innerText = inventory.apple;
-    document.getElementById('inv-wall').innerText = inventory.wall;
-    document.getElementById('inv-floor').innerText = inventory.floor;
-    
+    // 1. Update Crafting Recipes Availability
     const craftPick = document.getElementById('btn-craft-pickaxe');
-    craftPick.disabled = !(inventory.wood >= 10 && !hasPickaxe);
+    if (craftPick) {
+        if (inventory.wood >= 10 && !hasPickaxe) craftPick.classList.remove('disabled');
+        else craftPick.classList.add('disabled');
+    }
     
     const craftWall = document.getElementById('btn-craft-wall');
-    craftWall.disabled = !(inventory.wood >= 5);
+    if (craftWall) {
+        if (inventory.wood >= 5) craftWall.classList.remove('disabled');
+        else craftWall.classList.add('disabled');
+    }
     
     const craftFloor = document.getElementById('btn-craft-floor');
-    craftFloor.disabled = !(inventory.wood >= 5);
+    if (craftFloor) {
+        if (inventory.wood >= 5) craftFloor.classList.remove('disabled');
+        else craftFloor.classList.add('disabled');
+    }
+
+    // 2. Generate Inventory Grid (3x9 = 27 slots)
+    const invGrid = document.getElementById('mc-inventory-slots');
+    if (invGrid) {
+        invGrid.innerHTML = ''; // clear
+        let itemsToRender = [];
+        if (inventory.wood > 0) itemsToRender.push({ name: 'Wood', count: inventory.wood });
+        if (inventory.rock > 0) itemsToRender.push({ name: 'Rock', count: inventory.rock });
+        if (inventory.apple > 0) itemsToRender.push({ name: 'Apple', count: inventory.apple });
+        if (inventory.wall > 0) itemsToRender.push({ name: 'Wall', count: inventory.wall });
+        if (inventory.floor > 0) itemsToRender.push({ name: 'Floor', count: inventory.floor });
+        if (hasPickaxe) itemsToRender.push({ name: 'Pick', count: 1 });
+
+        for (let i = 0; i < 27; i++) {
+            const item = itemsToRender[i];
+            if (item) {
+                const countHtml = item.count > 1 ? `<div class="count">${item.count}</div>` : '';
+                invGrid.innerHTML += `<div class="mc-slot" title="${item.name}">${item.name}${countHtml}</div>`;
+            } else {
+                invGrid.innerHTML += `<div class="mc-slot empty"></div>`;
+            }
+        }
+    }
+
+    // 3. Update Hotbar (1-5 slots)
+    const updateHotbarSlot = (index, name, count) => {
+        const slot = document.querySelector(`.hotbar-slot:nth-child(${index})`);
+        if (slot) {
+            if (count > 0 || name === 'Hand') {
+                const countHtml = count > 1 ? `<div class="count">${count}</div>` : '';
+                // Keep the active class if it has it
+                const isActive = slot.classList.contains('active') ? ' active' : '';
+                slot.className = `hotbar-slot${isActive}`;
+                slot.innerHTML = `${name}${countHtml}`;
+            } else {
+                const isActive = slot.classList.contains('active') ? ' active' : '';
+                slot.className = `hotbar-slot${isActive} empty`;
+                slot.innerHTML = '';
+            }
+        }
+    };
+
+    updateHotbarSlot(1, 'Hand', 1); // Always have hand
+    updateHotbarSlot(2, 'Pick', hasPickaxe ? 1 : 0);
+    updateHotbarSlot(3, 'Apple', inventory.apple);
+    updateHotbarSlot(4, 'Wall', inventory.wall);
+    updateHotbarSlot(5, 'Floor', inventory.floor);
 }
 
 let currentSlot = 1;
@@ -456,7 +507,6 @@ function init() {
                     if (inventory.apple === 0) {
                         setTimeout(() => {
                             selectSlot(currentSlot); // Auto unequip if no apples left
-                            document.querySelector('.hotbar-slot:nth-child(3)').innerText = '3';
                         }, 500); // Wait for swing animation to finish roughly
                     }
                     updateInventoryUI();
@@ -529,7 +579,6 @@ function init() {
                             inventory.wood += 1;
                             if (Math.random() < 0.3) {
                                 inventory.apple += 1;
-                                document.querySelector('.hotbar-slot:nth-child(3)').innerText = 'Apple';
                             }
                         } else if (obj.userData.type === 'rock') {
                             inventory.rock += 1;
@@ -547,8 +596,8 @@ function init() {
             inventory.wood -= 10;
             hasPickaxe = true;
             selectSlot(2);
-            e.target.style.display = 'none';
-            document.querySelector('.hotbar-slot:nth-child(2)').innerText = 'Pick';
+            // Hide the craft pickaxe slot since you only need one
+            document.getElementById('btn-craft-pickaxe').style.display = 'none';
             updateInventoryUI();
         }
     });
@@ -557,7 +606,6 @@ function init() {
         if (inventory.wood >= 5) {
             inventory.wood -= 5;
             inventory.wall++;
-            document.querySelector('.hotbar-slot:nth-child(4)').innerText = 'Wall';
             updateInventoryUI();
         }
     });
@@ -566,7 +614,6 @@ function init() {
         if (inventory.wood >= 5) {
             inventory.wood -= 5;
             inventory.floor++;
-            document.querySelector('.hotbar-slot:nth-child(5)').innerText = 'Floor';
             updateInventoryUI();
         }
     });
