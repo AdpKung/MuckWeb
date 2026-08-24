@@ -13,14 +13,58 @@ let moveLeft = false;
 let moveRight = false;
 let canJump = false;
 
-const inventory = {
-    wood: 0,
-    rock: 0,
-    apple: 0,
-    wall: 0,
-    floor: 0,
-    campfire: 0
-};
+let inventorySlots = Array(27).fill(null);
+
+function addItem(type, count = 1) {
+    // 1. Try to stack in existing slot
+    for (let i = 0; i < inventorySlots.length; i++) {
+        if (inventorySlots[i] && inventorySlots[i].type === type) {
+            inventorySlots[i].count += count;
+            updateInventoryUI();
+            return true;
+        }
+    }
+    // 2. Find empty slot
+    for (let i = 0; i < inventorySlots.length; i++) {
+        if (!inventorySlots[i]) {
+            inventorySlots[i] = { type, count };
+            updateInventoryUI();
+            return true;
+        }
+    }
+    console.log("Inventory full!");
+    return false;
+}
+
+function countItem(type) {
+    let total = 0;
+    for (const slot of inventorySlots) {
+        if (slot && slot.type === type) {
+            total += slot.count;
+        }
+    }
+    return total;
+}
+
+function consumeItem(type, count = 1) {
+    let remainingToConsume = count;
+    for (let i = 0; i < inventorySlots.length; i++) {
+        const slot = inventorySlots[i];
+        if (slot && slot.type === type) {
+            if (slot.count >= remainingToConsume) {
+                slot.count -= remainingToConsume;
+                remainingToConsume = 0;
+                if (slot.count === 0) inventorySlots[i] = null;
+                break; // Done
+            } else {
+                remainingToConsume -= slot.count;
+                inventorySlots[i] = null;
+            }
+        }
+    }
+    updateInventoryUI();
+    return remainingToConsume === 0;
+}
 let isInventoryOpen = false;
 
 let hasPickaxe = false;
@@ -43,37 +87,41 @@ let dayCount = 1;
 const cycleLength = 60; // 60 seconds per day/night cycle
 let isNight = false;
 let monsters = [];
+let droppedItems = [];
 let nextMonsterSpawn = 0;
 
 function updateInventoryUI() {
     // 1. Update Crafting Recipes Availability
+    const woodCount = countItem('wood');
+    const rockCount = countItem('rock');
+
     const craftPick = document.getElementById('btn-craft-pickaxe');
     if (craftPick) {
-        if (inventory.wood >= 10 && !hasPickaxe) craftPick.classList.remove('disabled');
+        if (woodCount >= 10 && !hasPickaxe) craftPick.classList.remove('disabled');
         else craftPick.classList.add('disabled');
     }
     
     const craftWall = document.getElementById('btn-craft-wall');
     if (craftWall) {
-        if (inventory.wood >= 5) craftWall.classList.remove('disabled');
+        if (woodCount >= 5) craftWall.classList.remove('disabled');
         else craftWall.classList.add('disabled');
     }
     
     const craftFloor = document.getElementById('btn-craft-floor');
     if (craftFloor) {
-        if (inventory.wood >= 5) craftFloor.classList.remove('disabled');
+        if (woodCount >= 5) craftFloor.classList.remove('disabled');
         else craftFloor.classList.add('disabled');
     }
 
     const craftSword = document.getElementById('btn-craft-sword');
     if (craftSword) {
-        if (inventory.wood >= 5 && inventory.rock >= 5 && !hasSword) craftSword.classList.remove('disabled');
+        if (woodCount >= 5 && rockCount >= 5 && !hasSword) craftSword.classList.remove('disabled');
         else craftSword.classList.add('disabled');
     }
 
     const craftCampfire = document.getElementById('btn-craft-campfire');
     if (craftCampfire) {
-        if (inventory.wood >= 10 && inventory.rock >= 5) craftCampfire.classList.remove('disabled');
+        if (woodCount >= 10 && rockCount >= 5) craftCampfire.classList.remove('disabled');
         else craftCampfire.classList.add('disabled');
     }
 
@@ -81,53 +129,63 @@ function updateInventoryUI() {
     const invGrid = document.getElementById('mc-inventory-slots');
     if (invGrid) {
         invGrid.innerHTML = ''; // clear
-        let itemsToRender = [];
-        if (inventory.wood > 0) itemsToRender.push({ name: 'Wood', count: inventory.wood });
-        if (inventory.rock > 0) itemsToRender.push({ name: 'Rock', count: inventory.rock });
-        if (inventory.apple > 0) itemsToRender.push({ name: 'Apple', count: inventory.apple });
-        if (inventory.wall > 0) itemsToRender.push({ name: 'Wall', count: inventory.wall });
-        if (inventory.floor > 0) itemsToRender.push({ name: 'Floor', count: inventory.floor });
-        if (inventory.campfire > 0) itemsToRender.push({ name: 'Camp', count: inventory.campfire });
-        if (hasPickaxe) itemsToRender.push({ name: 'Pick', count: 1 });
-        if (hasSword) itemsToRender.push({ name: 'Swrd', count: 1 });
-
         for (let i = 0; i < 27; i++) {
-            const item = itemsToRender[i];
-            if (item) {
-                const countHtml = item.count > 1 ? `<div class="count">${item.count}</div>` : '';
-                invGrid.innerHTML += `<div class="mc-slot" title="${item.name}">${item.name}${countHtml}</div>`;
+            const slot = inventorySlots[i];
+            if (slot) {
+                const countHtml = slot.count > 1 ? `<div class="count">${slot.count}</div>` : '';
+                // Add dragging attributes
+                invGrid.innerHTML += `<div class="mc-slot" title="${slot.type}" draggable="true" ondragstart="dragStart(event, ${i})" ondragover="dragOver(event)" ondrop="drop(event, ${i})">${slot.type}${countHtml}</div>`;
             } else {
-                invGrid.innerHTML += `<div class="mc-slot empty"></div>`;
+                invGrid.innerHTML += `<div class="mc-slot empty" ondragover="dragOver(event)" ondrop="drop(event, ${i})"></div>`;
             }
         }
     }
 
     // 3. Update Hotbar (1-5 slots)
-    const updateHotbarSlot = (index, name, count) => {
-        const slot = document.querySelector(`.hotbar-slot:nth-child(${index})`);
-        if (slot) {
-            if (count > 0 || name === 'Hand') {
-                const countHtml = count > 1 ? `<div class="count">${count}</div>` : '';
-                // Keep the active class if it has it
-                const isActive = slot.classList.contains('active') ? ' active' : '';
-                slot.className = `hotbar-slot${isActive}`;
-                slot.innerHTML = `${name}${countHtml}`;
+    for (let i = 0; i < 7; i++) {
+        const slot = inventorySlots[i];
+        const uiIndex = i + 1;
+        const domSlot = document.querySelector(`.hotbar-slot:nth-child(${uiIndex})`);
+        if (domSlot) {
+            const isActive = domSlot.classList.contains('active') ? ' active' : '';
+            if (slot) {
+                const countHtml = slot.count > 1 ? `<div class="count">${slot.count}</div>` : '';
+                domSlot.className = `hotbar-slot${isActive}`;
+                domSlot.innerHTML = `${slot.type}${countHtml}`;
             } else {
-                const isActive = slot.classList.contains('active') ? ' active' : '';
-                slot.className = `hotbar-slot${isActive} empty`;
-                slot.innerHTML = '';
+                domSlot.className = `hotbar-slot${isActive} empty`;
+                domSlot.innerHTML = '';
             }
         }
-    };
-
-    updateHotbarSlot(1, 'Hand', 1); // Always have hand
-    updateHotbarSlot(2, 'Pick', hasPickaxe ? 1 : 0);
-    updateHotbarSlot(3, 'Apple', inventory.apple);
-    updateHotbarSlot(4, 'Wall', inventory.wall);
-    updateHotbarSlot(5, 'Floor', inventory.floor);
-    updateHotbarSlot(6, 'Swrd', hasSword ? 1 : 0);
-    updateHotbarSlot(7, 'Camp', inventory.campfire);
+    }
 }
+
+window.dragStart = function(event, index) {
+    event.dataTransfer.setData("text/plain", index);
+};
+
+window.dragOver = function(event) {
+    event.preventDefault(); // allow drop
+};
+
+window.drop = function(event, dropIndex) {
+    event.preventDefault();
+    const dragIndex = parseInt(event.dataTransfer.getData("text/plain"));
+    if (dragIndex === dropIndex) return;
+
+    // Swap items in inventory array
+    const temp = inventorySlots[dragIndex];
+    inventorySlots[dragIndex] = inventorySlots[dropIndex];
+    inventorySlots[dropIndex] = temp;
+
+    // Refresh UI
+    updateInventoryUI();
+    
+    // Refresh model if active slot changed
+    if (dragIndex === currentSlot - 1 || dropIndex === currentSlot - 1) {
+        selectSlot(currentSlot);
+    }
+};
 
 let currentSlot = 1;
 
@@ -188,26 +246,11 @@ function selectSlot(index) {
     if (index > 7) index = 1;
     currentSlot = index;
     
-    if (currentSlot === 1) {
-        equipTool('hand', 1);
-    } else if (currentSlot === 2) {
-        if (hasPickaxe) equipTool('pickaxe', 2);
-        else equipTool('empty', 2);
-    } else if (currentSlot === 3) {
-        if (inventory.apple > 0) equipTool('apple', 3);
-        else equipTool('empty', 3);
-    } else if (currentSlot === 4) {
-        if (inventory.wall > 0) equipTool('wall', 4);
-        else equipTool('empty', 4);
-    } else if (currentSlot === 5) {
-        if (inventory.floor > 0) equipTool('floor', 5);
-        else equipTool('empty', 5);
-    } else if (currentSlot === 6) {
-        if (hasSword) equipTool('sword', 6);
-        else equipTool('empty', 6);
-    } else if (currentSlot === 7) {
-        if (inventory.campfire > 0) equipTool('campfire', 7);
-        else equipTool('empty', 7);
+    const slotData = inventorySlots[index - 1];
+    if (slotData) {
+        equipTool(slotData.type, index);
+    } else {
+        equipTool('hand', index);
     }
 }
 
@@ -565,22 +608,21 @@ function init() {
                 isSwinging = true;
                 swingTime = 0;
             } else if (equippedTool === 'apple') {
-                if (inventory.apple > 0) {
+                if (countItem('apple') > 0) {
                     isSwinging = true;
                     swingTime = 0;
-                    inventory.apple--;
+                    consumeItem('apple', 1);
                     playerHunger = Math.min(100, playerHunger + 20);
-                    if (inventory.apple === 0) {
+                    if (countItem('apple') === 0) {
                         setTimeout(() => {
                             selectSlot(currentSlot); // Auto unequip if no apples left
                         }, 500); // Wait for swing animation to finish roughly
                     }
-                    updateInventoryUI();
                     return; // Don't mine when eating
                 }
             } else if (equippedTool === 'wall' || equippedTool === 'floor' || equippedTool === 'campfire') {
-                if (ghostMesh && ghostMesh.material.color.getHex() === 0x00ff00 && inventory[equippedTool] > 0) {
-                    inventory[equippedTool]--;
+                if (ghostMesh && ghostMesh.material.color.getHex() === 0x00ff00 && countItem(equippedTool) > 0) {
+                    consumeItem(equippedTool, 1);
                     
                     const buildGeo = ghostMesh.geometry.clone();
                     let buildMat;
@@ -610,7 +652,7 @@ function init() {
                     scene.add(buildMesh);
                     objects.push(buildMesh);
                     
-                    if (inventory[equippedTool] === 0) {
+                    if (countItem(equippedTool) === 0) {
                         selectSlot(currentSlot);
                     }
                     updateInventoryUI();
@@ -663,15 +705,13 @@ function init() {
                         if (index > -1) objects.splice(index, 1);
                         
                         if (obj.userData.type === 'wood') {
-                            inventory.wood += 1;
+                            spawnDroppedItem('wood', obj.position);
                             if (Math.random() < 0.3) {
-                                inventory.apple += 1;
+                                spawnDroppedItem('apple', obj.position);
                             }
                         } else if (obj.userData.type === 'rock') {
-                            inventory.rock += 1;
+                            spawnDroppedItem('rock', obj.position);
                         }
-                        updateInventoryUI();
-                        console.log("Mined resource! Wood:", inventory.wood, "Rock:", inventory.rock);
                     }
                 }
             }
@@ -679,51 +719,111 @@ function init() {
     });
 
     document.getElementById('btn-craft-pickaxe').addEventListener('click', (e) => {
-        if (inventory.wood >= 10 && !hasPickaxe) {
-            inventory.wood -= 10;
+        if (countItem('wood') >= 10 && !hasPickaxe) {
+            consumeItem('wood', 10);
             hasPickaxe = true;
-            selectSlot(2);
-            // Hide the craft pickaxe slot since you only need one
+            addItem('pickaxe', 1);
             document.getElementById('btn-craft-pickaxe').style.display = 'none';
-            updateInventoryUI();
         }
     });
 
     document.getElementById('btn-craft-sword').addEventListener('click', (e) => {
-        if (inventory.wood >= 5 && inventory.rock >= 5 && !hasSword) {
-            inventory.wood -= 5;
-            inventory.rock -= 5;
+        if (countItem('wood') >= 5 && countItem('rock') >= 5 && !hasSword) {
+            consumeItem('wood', 5);
+            consumeItem('rock', 5);
             hasSword = true;
-            selectSlot(6);
+            addItem('sword', 1);
             document.getElementById('btn-craft-sword').style.display = 'none';
-            updateInventoryUI();
         }
     });
 
     document.getElementById('btn-craft-campfire').addEventListener('click', (e) => {
-        if (inventory.wood >= 10 && inventory.rock >= 5) {
-            inventory.wood -= 10;
-            inventory.rock -= 5;
-            inventory.campfire++;
-            updateInventoryUI();
+        if (countItem('wood') >= 10 && countItem('rock') >= 5) {
+            consumeItem('wood', 10);
+            consumeItem('rock', 5);
+            addItem('campfire', 1);
         }
     });
 
     document.getElementById('btn-craft-wall').addEventListener('click', () => {
-        if (inventory.wood >= 5) {
-            inventory.wood -= 5;
-            inventory.wall++;
-            updateInventoryUI();
+        if (countItem('wood') >= 5) {
+            consumeItem('wood', 5);
+            addItem('wall', 1);
         }
     });
 
     document.getElementById('btn-craft-floor').addEventListener('click', () => {
-        if (inventory.wood >= 5) {
-            inventory.wood -= 5;
-            inventory.floor++;
-            updateInventoryUI();
+        if (countItem('wood') >= 5) {
+            consumeItem('wood', 5);
+            addItem('floor', 1);
         }
     });
+}
+
+function spawnDroppedItem(type, position) {
+    let geo, mat;
+    if (type === 'wood') {
+        geo = new THREE.CylinderGeometry(0.2, 0.2, 0.8);
+        mat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+    } else if (type === 'rock') {
+        geo = new THREE.DodecahedronGeometry(0.3);
+        mat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+    } else if (type === 'apple') {
+        geo = new THREE.SphereGeometry(0.2);
+        mat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
+    } else {
+        return;
+    }
+
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.copy(position);
+    mesh.position.y += 2; // pop up
+    
+    // Random toss velocity
+    mesh.userData = {
+        type: type,
+        vx: (Math.random() - 0.5) * 5,
+        vy: 5 + Math.random() * 5,
+        vz: (Math.random() - 0.5) * 5,
+        life: 0
+    };
+    
+    scene.add(mesh);
+    droppedItems.push(mesh);
+}
+
+function updateDroppedItems(delta) {
+    for (let i = droppedItems.length - 1; i >= 0; i--) {
+        const item = droppedItems[i];
+        item.userData.life += delta;
+        
+        // Physics
+        item.userData.vy -= 15 * delta; // gravity
+        item.position.x += item.userData.vx * delta;
+        item.position.y += item.userData.vy * delta;
+        item.position.z += item.userData.vz * delta;
+        
+        // Floor collision
+        const groundHeight = Math.sin(item.position.x / 20) * Math.cos(item.position.z / 20) * 5;
+        if (item.position.y < groundHeight + 0.2) {
+            item.position.y = groundHeight + 0.2;
+            item.userData.vy *= -0.5; // bounce
+            item.userData.vx *= 0.5; // friction
+            item.userData.vz *= 0.5;
+        }
+
+        // Collection logic (wait 0.5s before can collect to avoid instant grab)
+        if (item.userData.life > 0.5) {
+            const dist = camera.position.distanceTo(item.position);
+            if (dist < 3) {
+                // Try to add to inventory
+                if (addItem(item.userData.type, 1)) {
+                    scene.remove(item);
+                    droppedItems.splice(i, 1);
+                }
+            }
+        }
+    }
 }
 function updateMonsters(delta) {
     // Spawning logic
@@ -893,6 +993,7 @@ function animate() {
 
         // Monster Logic
         updateMonsters(globalDelta);
+        updateDroppedItems(globalDelta);
 
         // Hunger Logic
         playerHunger = Math.max(0, playerHunger - globalDelta * 1.5); // drain 1.5 per second
