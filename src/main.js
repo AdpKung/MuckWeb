@@ -555,16 +555,46 @@ function updateMonsters(delta) {
         const dx = camera.position.x - mob.position.x;
         const dz = camera.position.z - mob.position.z;
         const dist = Math.sqrt(dx*dx + dz*dz);
+        const dirX = dx / dist;
+        const dirZ = dz / dist;
         
-        if (dist > 2.5) { // stop at 2.5 units
-            const moveSpeed = 10 * delta;
-            mob.position.x += (dx / dist) * moveSpeed;
-            mob.position.z += (dz / dist) * moveSpeed;
-        } else {
-            // Attack player
-            if (performance.now() > mob.userData.nextAttack) {
-                mob.userData.nextAttack = performance.now() + 1500; // Attack every 1.5s
-                takeDamage(10); // Deal 10 damage
+        // Raycast to check for walls in the way
+        const mobRay = new THREE.Raycaster(mob.position, new THREE.Vector3(dirX, 0, dirZ).normalize());
+        const intersects = mobRay.intersectObjects(objects, false);
+        
+        let hitWall = false;
+        if (intersects.length > 0 && intersects[0].distance < 2.5) {
+            const hitObj = intersects[0].object;
+            if (hitObj.userData && hitObj.userData.type === 'wall') {
+                hitWall = true;
+                // Attack the wall
+                if (performance.now() > mob.userData.nextAttack) {
+                    mob.userData.nextAttack = performance.now() + 1500;
+                    hitObj.userData.hp -= 10;
+                    
+                    // Visual feedback
+                    hitObj.material.color.setHex(0xffaaaa);
+                    setTimeout(() => { if (hitObj.parent) hitObj.material.color.setHex(0x8B4513); }, 100);
+                    
+                    if (hitObj.userData.hp <= 0) {
+                        scene.remove(hitObj);
+                        objects.splice(objects.indexOf(hitObj), 1);
+                    }
+                }
+            }
+        }
+        
+        if (!hitWall) {
+            if (dist > 2.5) { // stop at 2.5 units from player
+                const moveSpeed = 10 * delta;
+                mob.position.x += dirX * moveSpeed;
+                mob.position.z += dirZ * moveSpeed;
+            } else {
+                // Attack player
+                if (performance.now() > mob.userData.nextAttack) {
+                    mob.userData.nextAttack = performance.now() + 1500; // Attack every 1.5s
+                    takeDamage(10); // Deal 10 damage
+                }
             }
         }
         
