@@ -94,6 +94,10 @@ let playerCoins = 0;
 let playerMaxHP = 100;
 let powerups = { sneakers: 0, dumbbell: 0, dagger: 0 };
 
+function getTerrainHeight(x, z) {
+    return (Math.sin(x / 30) * Math.cos(z / 30) * 10) + (Math.sin(x / 10) * Math.cos(z / 10) * 2);
+}
+
 function addPowerup(type) {
     if (powerups[type] !== undefined) {
         powerups[type]++;
@@ -552,7 +556,7 @@ function init() {
     raycaster = new THREE.Raycaster(new THREE.Vector3(), new THREE.Vector3(0, -1, 0), 0, 2.5);
 
     // Setup World Floor
-    const floorGeometry = new THREE.PlaneGeometry(500, 500, 50, 50);
+    const floorGeometry = new THREE.PlaneGeometry(1000, 1000, 150, 150);
     floorGeometry.rotateX(-Math.PI / 2);
 
     // Displace vertices to make simple terrain
@@ -560,8 +564,8 @@ function init() {
     for (let i = 0; i < positionAttribute.count; i++) {
         const x = positionAttribute.getX(i);
         const z = positionAttribute.getZ(i);
-        // Simple procedural hills
-        const y = Math.sin(x / 20) * Math.cos(z / 20) * 5;
+        // Procedural hills
+        const y = getTerrainHeight(x, z);
         positionAttribute.setY(i, y);
     }
     floorGeometry.computeVertexNormals();
@@ -579,12 +583,12 @@ function init() {
     const leafGeometry = new THREE.DodecahedronGeometry(3.5);
     const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x2e8c33 });
 
-    for (let i = 0; i < 50; i++) {
+    for (let i = 0; i < 200; i++) {
         const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-        trunk.position.x = Math.random() * 200 - 100;
-        trunk.position.z = Math.random() * 200 - 100;
+        trunk.position.x = Math.random() * 1000 - 500;
+        trunk.position.z = Math.random() * 1000 - 500;
         // Basic height placement based on flat world (will clip through bumpy terrain a bit)
-        const groundHeight = Math.sin(trunk.position.x / 20) * Math.cos(trunk.position.z / 20) * 5;
+        const groundHeight = getTerrainHeight(trunk.position.x, trunk.position.z);
         trunk.position.y = groundHeight + 2.5; 
         trunk.castShadow = true;
         trunk.receiveShadow = true;
@@ -617,11 +621,11 @@ function init() {
 
     const rockGeometry = new THREE.DodecahedronGeometry(2);
     const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x888888 });
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 150; i++) {
         const rock = new THREE.Mesh(rockGeometry, rockMaterial);
-        rock.position.x = Math.random() * 200 - 100;
-        rock.position.z = Math.random() * 200 - 100;
-        const groundHeight = Math.sin(rock.position.x / 20) * Math.cos(rock.position.z / 20) * 5;
+        rock.position.x = Math.random() * 1000 - 500;
+        rock.position.z = Math.random() * 1000 - 500;
+        const groundHeight = getTerrainHeight(rock.position.x, rock.position.z);
         rock.position.y = groundHeight + 1;
         rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
         rock.castShadow = true;
@@ -633,7 +637,7 @@ function init() {
 
     // Chest Generation
     const chestGeo = new THREE.BoxGeometry(1.5, 1, 1.5);
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 100; i++) {
         let chestType, chestColor, cost, powerup;
         const r = Math.random();
         if (r < 0.6) {
@@ -645,9 +649,9 @@ function init() {
         }
         const chestMat = new THREE.MeshLambertMaterial({ color: chestColor });
         const chest = new THREE.Mesh(chestGeo, chestMat);
-        chest.position.x = Math.random() * 200 - 100;
-        chest.position.z = Math.random() * 200 - 100;
-        const groundHeight = Math.sin(chest.position.x / 20) * Math.cos(chest.position.z / 20) * 5;
+        chest.position.x = Math.random() * 1000 - 500;
+        chest.position.z = Math.random() * 1000 - 500;
+        const groundHeight = getTerrainHeight(chest.position.x, chest.position.z);
         chest.position.y = groundHeight + 0.5;
         chest.rotation.y = Math.random() * Math.PI;
         chest.castShadow = true;
@@ -929,7 +933,7 @@ function updateDroppedItems(delta) {
         item.position.z += item.userData.vz * delta;
         
         // Floor collision
-        const groundHeight = Math.sin(item.position.x / 20) * Math.cos(item.position.z / 20) * 5;
+        const groundHeight = getTerrainHeight(item.position.x, item.position.z);
         if (item.position.y < groundHeight + 0.2) {
             item.position.y = groundHeight + 0.2;
             item.userData.vy *= -0.5; // bounce
@@ -1060,7 +1064,7 @@ function updateMonsters(delta) {
         }
         
         // Simple terrain height follow
-        const groundHeight = Math.sin(mob.position.x / 20) * Math.cos(mob.position.z / 20) * 5;
+        const groundHeight = getTerrainHeight(mob.position.x, mob.position.z);
         mob.position.y = groundHeight + 1;
     }
 }
@@ -1216,9 +1220,13 @@ function animate() {
         controls.moveForward(-velocity.z * delta);
         camera.position.y += (velocity.y * delta);
 
-        if (camera.position.y < 2) { // Minimum height safety net
+        // Terrain Collision
+        const groundHeight = getTerrainHeight(camera.position.x, camera.position.z);
+        const playerHeight = groundHeight + 2;
+
+        if (camera.position.y < playerHeight) {
             velocity.y = 0;
-            camera.position.y = 2;
+            camera.position.y = playerHeight;
             canJump = true;
         }
 
