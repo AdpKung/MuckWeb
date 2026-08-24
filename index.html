@@ -7,16 +7,7 @@
     <title>MuckWeb - Prototype</title>
   </head>
   <body>
-    <div id="error-log" style="position:absolute; top:10px; left:10px; color:red; z-index:9999; font-weight:bold; background:rgba(255,255,255,0.8); pointer-events:none;"></div>
-    <script>
-      window.onerror = function(msg, url, lineNo, columnNo, error) {
-        document.getElementById('error-log').innerText += 'ERROR: ' + msg + '\n';
-        return false;
-      };
-      window.addEventListener('unhandledrejection', function(event) {
-        document.getElementById('error-log').innerText += 'PROMISE ERROR: ' + event.reason + '\n';
-      });
-    </script>
+    <!-- Debug log removed for production -->
     <div id="inventory-ui" style="display: none;">
         <div class="mc-inventory-container">
             <h2 style="text-align:center; margin-top:0; font-family:sans-serif; font-size:18px; color:#ddd;">Crafting</h2>

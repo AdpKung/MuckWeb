@@ -313,7 +313,23 @@ function init() {
                 updateInventoryUI();
             } else {
                 invUI.style.display = 'none';
-                controls.lock();
+                try {
+                    // Try to lock, catch if browser blocks it (rate limit)
+                    const promise = document.body.requestPointerLock();
+                    if (promise) {
+                        promise.catch(err => {
+                            console.warn("Pointer lock blocked by browser:", err);
+                            const blocker = document.getElementById('blocker');
+                            const instructions = document.getElementById('instructions');
+                            if (blocker && instructions) {
+                                blocker.style.display = 'flex';
+                                instructions.style.display = '';
+                            }
+                        });
+                    }
+                } catch(e) {
+                    // Ignore fallback
+                }
             }
             return;
         }
