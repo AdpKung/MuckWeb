@@ -16,13 +16,16 @@ let canJump = false;
 const inventory = {
     wood: 0,
     rock: 0,
-    apple: 0
+    apple: 0,
+    wall: 0,
+    floor: 0
 };
 let isInventoryOpen = false;
 
 let hasPickaxe = false;
 let equippedTool = 'hand';
 let pickaxeModel = null;
+let ghostMesh = null;
 let isSwinging = false;
 let swingTime = 0;
 
@@ -43,35 +46,52 @@ function updateInventoryUI() {
     document.getElementById('inv-wood').innerText = inventory.wood;
     document.getElementById('inv-rock').innerText = inventory.rock;
     document.getElementById('inv-apple').innerText = inventory.apple;
+    document.getElementById('inv-wall').innerText = inventory.wall;
+    document.getElementById('inv-floor').innerText = inventory.floor;
     
-    const craftBtn = document.getElementById('btn-craft-pickaxe');
-    if (inventory.wood >= 10 && !hasPickaxe) {
-        craftBtn.disabled = false;
-    } else {
-        craftBtn.disabled = true;
-    }
+    const craftPick = document.getElementById('btn-craft-pickaxe');
+    craftPick.disabled = !(inventory.wood >= 10 && !hasPickaxe);
+    
+    const craftWall = document.getElementById('btn-craft-wall');
+    craftWall.disabled = !(inventory.wood >= 5);
+    
+    const craftFloor = document.getElementById('btn-craft-floor');
+    craftFloor.disabled = !(inventory.wood >= 5);
 }
 
 function equipTool(tool) {
     equippedTool = tool;
     
     // UI update
-    for (let i = 1; i <= 3; i++) {
-        document.querySelector(`.hotbar-slot:nth-child(${i})`).classList.remove('active');
+    for (let i = 1; i <= 5; i++) {
+        const slot = document.querySelector(`.hotbar-slot:nth-child(${i})`);
+        if (slot) slot.classList.remove('active');
     }
     
+    if (pickaxeModel) pickaxeModel.visible = false;
+    if (appleModel) appleModel.visible = false;
+    if (ghostMesh) ghostMesh.visible = false;
+
     if (tool === 'hand') {
         document.querySelector('.hotbar-slot:nth-child(1)').classList.add('active');
-        if (pickaxeModel) pickaxeModel.visible = false;
-        if (appleModel) appleModel.visible = false;
     } else if (tool === 'pickaxe') {
         document.querySelector('.hotbar-slot:nth-child(2)').classList.add('active');
         if (pickaxeModel) pickaxeModel.visible = true;
-        if (appleModel) appleModel.visible = false;
     } else if (tool === 'apple') {
         document.querySelector('.hotbar-slot:nth-child(3)').classList.add('active');
-        if (pickaxeModel) pickaxeModel.visible = false;
         if (appleModel) appleModel.visible = true;
+    } else if (tool === 'wall') {
+        document.querySelector('.hotbar-slot:nth-child(4)').classList.add('active');
+        if (ghostMesh) {
+            ghostMesh.geometry = new THREE.BoxGeometry(4, 4, 0.5);
+            ghostMesh.visible = true;
+        }
+    } else if (tool === 'floor') {
+        document.querySelector('.hotbar-slot:nth-child(5)').classList.add('active');
+        if (ghostMesh) {
+            ghostMesh.geometry = new THREE.BoxGeometry(4, 0.5, 4);
+            ghostMesh.visible = true;
+        }
     }
 }
 
@@ -164,6 +184,12 @@ function init() {
     appleModel.visible = false;
     camera.add(appleModel);
 
+    // Create Ghost Mesh for building preview
+    const ghostMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.5, wireframe: true });
+    ghostMesh = new THREE.Mesh(new THREE.BoxGeometry(4, 4, 0.5), ghostMat);
+    ghostMesh.visible = false;
+    scene.add(ghostMesh);
+
     scene.add(camera); // Must add camera to scene to render its children
 
     // Setup Controls
@@ -244,6 +270,12 @@ function init() {
                 break;
             case 'Digit3':
                 if (inventory.apple > 0) equipTool('apple');
+                break;
+            case 'Digit4':
+                if (inventory.wall > 0) equipTool('wall');
+                break;
+            case 'Digit5':
+                if (inventory.floor > 0) equipTool('floor');
                 break;
         }
     };
@@ -374,6 +406,28 @@ function init() {
                     updateInventoryUI();
                     return; // Don't mine when eating
                 }
+            } else if (equippedTool === 'wall' || equippedTool === 'floor') {
+                if (ghostMesh && ghostMesh.material.color.getHex() === 0x00ff00 && inventory[equippedTool] > 0) {
+                    inventory[equippedTool]--;
+                    
+                    const buildGeo = ghostMesh.geometry.clone();
+                    const buildMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                    const buildMesh = new THREE.Mesh(buildGeo, buildMat);
+                    buildMesh.position.copy(ghostMesh.position);
+                    buildMesh.rotation.copy(ghostMesh.rotation);
+                    buildMesh.castShadow = true;
+                    buildMesh.receiveShadow = true;
+                    buildMesh.userData = { type: equippedTool, hp: 50 };
+                    
+                    scene.add(buildMesh);
+                    objects.push(buildMesh);
+                    
+                    if (inventory[equippedTool] === 0) {
+                        equipTool('hand');
+                    }
+                    updateInventoryUI();
+                    return; // Don't mine when building
+                }
             }
 
             // Mining logic (raycast forward)
@@ -437,13 +491,26 @@ function init() {
             inventory.wood -= 10;
             hasPickaxe = true;
             equipTool('pickaxe');
-            
-            // Hide craft button
             e.target.style.display = 'none';
-            
-            // Update hotbar UI text
             document.querySelector('.hotbar-slot:nth-child(2)').innerText = 'Pick';
-            
+            updateInventoryUI();
+        }
+    });
+
+    document.getElementById('btn-craft-wall').addEventListener('click', () => {
+        if (inventory.wood >= 5) {
+            inventory.wood -= 5;
+            inventory.wall++;
+            document.querySelector('.hotbar-slot:nth-child(4)').innerText = 'Wall';
+            updateInventoryUI();
+        }
+    });
+
+    document.getElementById('btn-craft-floor').addEventListener('click', () => {
+        if (inventory.wood >= 5) {
+            inventory.wood -= 5;
+            inventory.floor++;
+            document.querySelector('.hotbar-slot:nth-child(5)').innerText = 'Floor';
             updateInventoryUI();
         }
     });
@@ -645,6 +712,52 @@ function animate() {
             velocity.y = 0;
             camera.position.y = 2;
             canJump = true;
+        }
+
+        // Ghost Mesh Building preview
+        if (ghostMesh && ghostMesh.visible) {
+            const buildRay = new THREE.Raycaster();
+            buildRay.setFromCamera(new THREE.Vector2(0, 0), camera);
+            
+            // To prevent snapping to walls/floors we're looking through, we could filter objects
+            const intersects = buildRay.intersectObjects(objects, false);
+            
+            if (intersects.length > 0 && intersects[0].distance < 15) { // Placement range
+                const hit = intersects[0];
+                
+                // Snap to grid (rough)
+                const gridSize = 4;
+                const hitPoint = hit.point;
+                // Offset slightly based on normal to build attached to surfaces
+                const pos = hitPoint.clone().add(hit.face.normal.clone().multiplyScalar(2));
+                
+                ghostMesh.position.x = Math.round(pos.x / gridSize) * gridSize;
+                
+                // Floor snaps differently than Wall
+                if (equippedTool === 'floor') {
+                    ghostMesh.position.y = hitPoint.y + 0.25; // Floor height offset
+                    ghostMesh.position.z = Math.round(pos.z / gridSize) * gridSize;
+                    ghostMesh.rotation.set(0, 0, 0);
+                } else if (equippedTool === 'wall') {
+                    // Try to snap wall vertically
+                    ghostMesh.position.y = Math.max(2, Math.round(pos.y / gridSize) * gridSize);
+                    ghostMesh.position.z = Math.round(pos.z / gridSize) * gridSize;
+                    
+                    // Simple rotation based on looking angle
+                    const dir = new THREE.Vector3(0, 0, -1);
+                    dir.applyQuaternion(camera.quaternion);
+                    if (Math.abs(dir.x) > Math.abs(dir.z)) {
+                        ghostMesh.rotation.y = Math.PI / 2; // face X axis
+                    } else {
+                        ghostMesh.rotation.y = 0; // face Z axis
+                    }
+                }
+                ghostMesh.material.color.setHex(0x00ff00);
+            } else {
+                ghostMesh.material.color.setHex(0xff0000); // Too far
+                // Keep it in front of player but red
+                buildRay.ray.at(10, ghostMesh.position);
+            }
         }
     }
 
