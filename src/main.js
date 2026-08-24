@@ -84,7 +84,7 @@ let isSprinting = false;
 let isDead = false;
 let dayTime = 0;
 let dayCount = 1;
-const cycleLength = 60; // 60 seconds per day/night cycle
+const cycleLength = 1440; // 24 minutes per day/night cycle
 let isNight = false;
 let monsters = [];
 let droppedItems = [];
@@ -1039,7 +1039,7 @@ function animate() {
         updateDroppedItems(globalDelta);
 
         // Hunger Logic
-        playerHunger = Math.max(0, playerHunger - globalDelta * 1.5); // drain 1.5 per second
+        playerHunger = Math.max(0, playerHunger - globalDelta * 0.15); // drain 0.15 per second
         
         // Campfire Healing Logic
         let nearCampfire = false;
