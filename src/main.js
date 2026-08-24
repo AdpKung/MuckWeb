@@ -18,13 +18,16 @@ const inventory = {
     rock: 0,
     apple: 0,
     wall: 0,
-    floor: 0
+    floor: 0,
+    campfire: 0
 };
 let isInventoryOpen = false;
 
 let hasPickaxe = false;
+let hasSword = false;
 let equippedTool = 'hand';
 let pickaxeModel = null;
+let swordModel = null;
 let ghostMesh = null;
 let isSwinging = false;
 let swingTime = 0;
@@ -62,6 +65,18 @@ function updateInventoryUI() {
         else craftFloor.classList.add('disabled');
     }
 
+    const craftSword = document.getElementById('btn-craft-sword');
+    if (craftSword) {
+        if (inventory.wood >= 5 && inventory.rock >= 5 && !hasSword) craftSword.classList.remove('disabled');
+        else craftSword.classList.add('disabled');
+    }
+
+    const craftCampfire = document.getElementById('btn-craft-campfire');
+    if (craftCampfire) {
+        if (inventory.wood >= 10 && inventory.rock >= 5) craftCampfire.classList.remove('disabled');
+        else craftCampfire.classList.add('disabled');
+    }
+
     // 2. Generate Inventory Grid (3x9 = 27 slots)
     const invGrid = document.getElementById('mc-inventory-slots');
     if (invGrid) {
@@ -72,7 +87,9 @@ function updateInventoryUI() {
         if (inventory.apple > 0) itemsToRender.push({ name: 'Apple', count: inventory.apple });
         if (inventory.wall > 0) itemsToRender.push({ name: 'Wall', count: inventory.wall });
         if (inventory.floor > 0) itemsToRender.push({ name: 'Floor', count: inventory.floor });
+        if (inventory.campfire > 0) itemsToRender.push({ name: 'Camp', count: inventory.campfire });
         if (hasPickaxe) itemsToRender.push({ name: 'Pick', count: 1 });
+        if (hasSword) itemsToRender.push({ name: 'Swrd', count: 1 });
 
         for (let i = 0; i < 27; i++) {
             const item = itemsToRender[i];
@@ -108,6 +125,8 @@ function updateInventoryUI() {
     updateHotbarSlot(3, 'Apple', inventory.apple);
     updateHotbarSlot(4, 'Wall', inventory.wall);
     updateHotbarSlot(5, 'Floor', inventory.floor);
+    updateHotbarSlot(6, 'Swrd', hasSword ? 1 : 0);
+    updateHotbarSlot(7, 'Camp', inventory.campfire);
 }
 
 let currentSlot = 1;
@@ -116,7 +135,7 @@ function equipTool(tool, slotIndex) {
     equippedTool = tool;
     
     // UI update
-    for (let i = 1; i <= 5; i++) {
+    for (let i = 1; i <= 7; i++) {
         const slot = document.querySelector(`.hotbar-slot:nth-child(${i})`);
         if (slot) slot.classList.remove('active');
     }
@@ -136,6 +155,7 @@ function equipTool(tool, slotIndex) {
     if (slotElement) slotElement.classList.add('active');
     
     if (pickaxeModel) pickaxeModel.visible = false;
+    if (swordModel) swordModel.visible = false;
     if (appleModel) appleModel.visible = false;
     if (ghostMesh) ghostMesh.visible = false;
 
@@ -153,12 +173,19 @@ function equipTool(tool, slotIndex) {
             ghostMesh.geometry = new THREE.BoxGeometry(4, 0.5, 4);
             ghostMesh.visible = true;
         }
+    } else if (tool === 'sword') {
+        if (swordModel) swordModel.visible = true;
+    } else if (tool === 'campfire') {
+        if (ghostMesh) {
+            ghostMesh.geometry = new THREE.CylinderGeometry(1, 1, 0.5, 8);
+            ghostMesh.visible = true;
+        }
     }
 }
 
 function selectSlot(index) {
-    if (index < 1) index = 5;
-    if (index > 5) index = 1;
+    if (index < 1) index = 7;
+    if (index > 7) index = 1;
     currentSlot = index;
     
     if (currentSlot === 1) {
@@ -175,6 +202,12 @@ function selectSlot(index) {
     } else if (currentSlot === 5) {
         if (inventory.floor > 0) equipTool('floor', 5);
         else equipTool('empty', 5);
+    } else if (currentSlot === 6) {
+        if (hasSword) equipTool('sword', 6);
+        else equipTool('empty', 6);
+    } else if (currentSlot === 7) {
+        if (inventory.campfire > 0) equipTool('campfire', 7);
+        else equipTool('empty', 7);
     }
 }
 
@@ -248,6 +281,23 @@ function init() {
     pickaxeModel.rotation.y = Math.PI / 4;
     pickaxeModel.visible = false; // Hidden until crafted
     camera.add(pickaxeModel);
+
+    // Create Sword View Model
+    swordModel = new THREE.Group();
+    const swordHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2), new THREE.MeshLambertMaterial({ color: 0x8B4513 }));
+    swordHandle.position.y = -0.2;
+    const swordBlade = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.6, 0.02), new THREE.MeshLambertMaterial({ color: 0xaaaaaa }));
+    swordBlade.position.y = 0.2;
+    const swordGuard = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.05, 0.05), new THREE.MeshLambertMaterial({ color: 0x555555 }));
+    swordGuard.position.y = -0.1;
+    swordModel.add(swordHandle);
+    swordModel.add(swordBlade);
+    swordModel.add(swordGuard);
+    swordModel.position.set(0.3, -0.2, -0.4);
+    swordModel.rotation.x = 0.5;
+    swordModel.rotation.y = Math.PI / 4;
+    swordModel.visible = false;
+    camera.add(swordModel);
 
     // Create Apple View Model
     appleModel = new THREE.Group();
@@ -511,7 +561,7 @@ function init() {
     document.addEventListener('mousedown', (e) => {
         if (!controls.isLocked) return;
         if (e.button === 0) { // Left click
-            if (equippedTool === 'pickaxe') {
+            if (equippedTool === 'pickaxe' || equippedTool === 'sword') {
                 isSwinging = true;
                 swingTime = 0;
             } else if (equippedTool === 'apple') {
@@ -528,18 +578,34 @@ function init() {
                     updateInventoryUI();
                     return; // Don't mine when eating
                 }
-            } else if (equippedTool === 'wall' || equippedTool === 'floor') {
+            } else if (equippedTool === 'wall' || equippedTool === 'floor' || equippedTool === 'campfire') {
                 if (ghostMesh && ghostMesh.material.color.getHex() === 0x00ff00 && inventory[equippedTool] > 0) {
                     inventory[equippedTool]--;
                     
                     const buildGeo = ghostMesh.geometry.clone();
-                    const buildMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                    let buildMat;
+                    if (equippedTool === 'campfire') {
+                        buildMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+                    } else {
+                        buildMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                    }
                     const buildMesh = new THREE.Mesh(buildGeo, buildMat);
                     buildMesh.position.copy(ghostMesh.position);
                     buildMesh.rotation.copy(ghostMesh.rotation);
                     buildMesh.castShadow = true;
                     buildMesh.receiveShadow = true;
                     buildMesh.userData = { type: equippedTool, hp: 50 };
+                    
+                    if (equippedTool === 'campfire') {
+                        const fireLight = new THREE.PointLight(0xffa500, 1, 30);
+                        fireLight.position.y = 1;
+                        buildMesh.add(fireLight);
+                        
+                        // Add some visual fire (small orange box)
+                        const fireVis = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), new THREE.MeshBasicMaterial({ color: 0xff4500 }));
+                        fireVis.position.y = 0.5;
+                        buildMesh.add(fireVis);
+                    }
                     
                     scene.add(buildMesh);
                     objects.push(buildMesh);
@@ -561,14 +627,19 @@ function init() {
             if (intersects.length > 0 && intersects[0].distance < 10) { // Mining range
                 const obj = intersects[0].object;
                 if (obj !== floor) { // Can't mine floor in this prototype easily
-                    // Simulate mining visually (shrink)
                     let damage = 0.15;
+                    let mobDamage = 5; // Base hand damage
+                    
                     if (equippedTool === 'pickaxe') {
                         damage = obj.userData.type === 'rock' ? 0.6 : 0.3; // Pickaxe is great for rocks
+                        mobDamage = 15;
+                    } else if (equippedTool === 'sword') {
+                        damage = 0.1; // Bad at mining
+                        mobDamage = 25; // Great at fighting
                     }
 
                     if (obj.userData.type === 'monster') {
-                        obj.userData.hp -= damage * 5; // Tools deal more damage to monsters for simplicity
+                        obj.userData.hp -= mobDamage;
                         // Visual feedback for hit
                         obj.material.color.setHex(0xffffff);
                         setTimeout(() => { if (obj.parent) obj.material.color.setHex(0xff0000); }, 100);
@@ -614,6 +685,26 @@ function init() {
             selectSlot(2);
             // Hide the craft pickaxe slot since you only need one
             document.getElementById('btn-craft-pickaxe').style.display = 'none';
+            updateInventoryUI();
+        }
+    });
+
+    document.getElementById('btn-craft-sword').addEventListener('click', (e) => {
+        if (inventory.wood >= 5 && inventory.rock >= 5 && !hasSword) {
+            inventory.wood -= 5;
+            inventory.rock -= 5;
+            hasSword = true;
+            selectSlot(6);
+            document.getElementById('btn-craft-sword').style.display = 'none';
+            updateInventoryUI();
+        }
+    });
+
+    document.getElementById('btn-craft-campfire').addEventListener('click', (e) => {
+        if (inventory.wood >= 10 && inventory.rock >= 5) {
+            inventory.wood -= 10;
+            inventory.rock -= 5;
+            inventory.campfire++;
             updateInventoryUI();
         }
     });
@@ -805,6 +896,24 @@ function animate() {
 
         // Hunger Logic
         playerHunger = Math.max(0, playerHunger - globalDelta * 1.5); // drain 1.5 per second
+        
+        // Campfire Healing Logic
+        let nearCampfire = false;
+        for (const obj of objects) {
+            if (obj.userData && obj.userData.type === 'campfire') {
+                const distSq = camera.position.distanceToSquared(obj.position);
+                if (distSq < 100) { // within 10 units
+                    nearCampfire = true;
+                    break;
+                }
+            }
+        }
+        
+        if (nearCampfire) {
+            playerHP = Math.min(100, playerHP + globalDelta * 2); // Heal 2 HP/s
+            document.getElementById('hp-bar').style.width = playerHP + '%';
+        }
+
         document.getElementById('hunger-bar').style.width = playerHunger + '%';
         if (playerHunger <= 0) {
             takeDamage(globalDelta * 5); // starve 5 HP per sec
