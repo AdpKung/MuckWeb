@@ -812,9 +812,17 @@ function updateDroppedItems(delta) {
             item.userData.vz *= 0.5;
         }
 
-        // Collection logic (wait 0.5s before can collect to avoid instant grab)
+        // Collection logic & Magnet effect
         if (item.userData.life > 0.5) {
             const dist = camera.position.distanceTo(item.position);
+            
+            // Magnet effect (pull towards player if within 8 units)
+            if (dist < 8) {
+                const dir = new THREE.Vector3().subVectors(camera.position, item.position).normalize();
+                item.position.add(dir.multiplyScalar(15 * delta));
+            }
+            
+            // Actually collect if within 3 units
             if (dist < 3) {
                 // Try to add to inventory
                 if (addItem(item.userData.type, 1)) {
@@ -1153,3 +1161,6 @@ function animate() {
 
     renderer.render(scene, camera);
 }
+
+// Initial UI Setup
+updateInventoryUI();
