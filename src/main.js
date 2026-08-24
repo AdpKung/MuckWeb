@@ -331,13 +331,14 @@ function init() {
     objects.push(floor);
 
     // Generate trees/rocks
-    const boxGeometry = new THREE.BoxGeometry(2, 5, 2);
-    const boxMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
-    const leafGeometry = new THREE.BoxGeometry(4, 4, 4);
-    const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+    const trunkGeometry = new THREE.CylinderGeometry(0.6, 0.9, 5, 7);
+    const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x6e3d22 });
+    // Use Dodecahedron for low-poly leafy top instead of a box
+    const leafGeometry = new THREE.DodecahedronGeometry(3.5);
+    const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x2e8c33 });
 
     for (let i = 0; i < 50; i++) {
-        const trunk = new THREE.Mesh(boxGeometry, boxMaterial);
+        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
         trunk.position.x = Math.random() * 200 - 100;
         trunk.position.z = Math.random() * 200 - 100;
         // Basic height placement based on flat world (will clip through bumpy terrain a bit)
@@ -349,14 +350,27 @@ function init() {
         scene.add(trunk);
         objects.push(trunk);
         
-        // Leaves
+        // Leaves (Bottom layer)
         const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
         leaf.position.copy(trunk.position);
-        leaf.position.y += 3.5;
+        leaf.position.y += 3.0;
+        // Randomize leaf rotation
+        leaf.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
         leaf.castShadow = true;
         leaf.userData = { type: 'wood' };
         scene.add(leaf);
         objects.push(leaf); // For basic raycast collision
+
+        // Leaves (Top layer)
+        const leafTop = new THREE.Mesh(leafGeometry, leafMaterial);
+        leafTop.position.copy(trunk.position);
+        leafTop.position.y += 5.5;
+        leafTop.scale.set(0.7, 0.7, 0.7);
+        leafTop.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        leafTop.castShadow = true;
+        leafTop.userData = { type: 'wood' };
+        scene.add(leafTop);
+        objects.push(leafTop);
     }
 
     const rockGeometry = new THREE.DodecahedronGeometry(2);
@@ -366,7 +380,8 @@ function init() {
         rock.position.x = Math.random() * 200 - 100;
         rock.position.z = Math.random() * 200 - 100;
         const groundHeight = Math.sin(rock.position.x / 20) * Math.cos(rock.position.z / 20) * 5;
-        rock.position.y = groundHeight + 1; 
+        rock.position.y = groundHeight + 1;
+        rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
         rock.castShadow = true;
         rock.receiveShadow = true;
         rock.userData = { type: 'rock' };
