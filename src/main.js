@@ -97,8 +97,14 @@ function updateInventoryUI() {
 
     const craftPick = document.getElementById('btn-craft-pickaxe');
     if (craftPick) {
-        if (woodCount >= 10 && !hasPickaxe) craftPick.classList.remove('disabled');
+        if (woodCount >= 10 && rockCount >= 10 && !hasPickaxe) craftPick.classList.remove('disabled');
         else craftPick.classList.add('disabled');
+    }
+    
+    const craftWorkbench = document.getElementById('btn-craft-workbench');
+    if (craftWorkbench) {
+        if (woodCount >= 10) craftWorkbench.classList.remove('disabled');
+        else craftWorkbench.classList.add('disabled');
     }
     
     const craftWall = document.getElementById('btn-craft-wall');
@@ -236,6 +242,11 @@ function equipTool(tool, slotIndex) {
     } else if (tool === 'campfire') {
         if (ghostMesh) {
             ghostMesh.geometry = new THREE.CylinderGeometry(1, 1, 0.5, 8);
+            ghostMesh.visible = true;
+        }
+    } else if (tool === 'workbench') {
+        if (ghostMesh) {
+            ghostMesh.geometry = new THREE.BoxGeometry(2, 1.5, 2);
             ghostMesh.visible = true;
         }
     }
@@ -400,12 +411,16 @@ function init() {
             event.preventDefault(); // Prevent tab from changing focus
             isInventoryOpen = !isInventoryOpen;
             const invUI = document.getElementById('inventory-ui');
+            const benchUI = document.getElementById('workbench-ui');
+            
             if (isInventoryOpen) {
                 controls.unlock();
-                invUI.style.display = 'flex';
+                invUI.style.display = 'flex'; // Tab opens normal inventory
+                benchUI.style.display = 'none';
                 updateInventoryUI();
             } else {
                 invUI.style.display = 'none';
+                benchUI.style.display = 'none';
                 try {
                     // Try to lock, catch if browser blocks it (rate limit)
                     const promise = document.body.requestPointerLock();
@@ -620,7 +635,7 @@ function init() {
                     }
                     return; // Don't mine when eating
                 }
-            } else if (equippedTool === 'wall' || equippedTool === 'floor' || equippedTool === 'campfire') {
+            } else if (equippedTool === 'wall' || equippedTool === 'floor' || equippedTool === 'campfire' || equippedTool === 'workbench') {
                 if (ghostMesh && ghostMesh.material.color.getHex() === 0x00ff00 && countItem(equippedTool) > 0) {
                     consumeItem(equippedTool, 1);
                     
@@ -628,6 +643,8 @@ function init() {
                     let buildMat;
                     if (equippedTool === 'campfire') {
                         buildMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+                    } else if (equippedTool === 'workbench') {
+                        buildMat = new THREE.MeshLambertMaterial({ color: 0x5c4033 });
                     } else {
                         buildMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
                     }
@@ -668,6 +685,16 @@ function init() {
             
             if (intersects.length > 0 && intersects[0].distance < 10) { // Mining range
                 const obj = intersects[0].object;
+                
+                // Workbench Interaction
+                if (obj.userData && obj.userData.type === 'workbench' && equippedTool === 'hand') {
+                    isInventoryOpen = true;
+                    controls.unlock();
+                    document.getElementById('workbench-ui').style.display = 'flex';
+                    updateInventoryUI();
+                    return; // Don't punch the workbench when opening it
+                }
+
                 if (obj !== floor) { // Can't mine floor in this prototype easily
                     let damage = 0.15;
                     let mobDamage = 5; // Base hand damage
@@ -718,9 +745,17 @@ function init() {
         }
     });
 
-    document.getElementById('btn-craft-pickaxe').addEventListener('click', (e) => {
-        if (countItem('wood') >= 10 && !hasPickaxe) {
+    document.getElementById('btn-craft-workbench').addEventListener('click', (e) => {
+        if (countItem('wood') >= 10) {
             consumeItem('wood', 10);
+            addItem('workbench', 1);
+        }
+    });
+
+    document.getElementById('btn-craft-pickaxe').addEventListener('click', (e) => {
+        if (countItem('wood') >= 10 && countItem('rock') >= 10 && !hasPickaxe) {
+            consumeItem('wood', 10);
+            consumeItem('rock', 10);
             hasPickaxe = true;
             addItem('pickaxe', 1);
             document.getElementById('btn-craft-pickaxe').style.display = 'none';
@@ -1118,6 +1153,11 @@ function animate() {
                     } else {
                         ghostMesh.rotation.y = 0; // face Z axis
                     }
+                } else {
+                    // Default for campfire, workbench, etc.
+                    ghostMesh.position.y = hitPoint.y + (ghostMesh.geometry.parameters.height / 2); 
+                    ghostMesh.position.z = Math.round(pos.z / gridSize) * gridSize;
+                    ghostMesh.rotation.set(0, 0, 0);
                 }
                 ghostMesh.material.color.setHex(0x00ff00);
             } else {
