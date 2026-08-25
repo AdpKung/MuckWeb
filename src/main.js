@@ -172,6 +172,10 @@ function drawMap(canvasId, isMinimap) {
     
     ctx.clearRect(0, 0, width, height);
     
+    // Fill ocean background
+    ctx.fillStyle = '#1E90FF';
+    ctx.fillRect(0, 0, width, height);
+    
     const pX = camera.position.x;
     const pZ = camera.position.z;
     
@@ -186,9 +190,22 @@ function drawMap(canvasId, isMinimap) {
         const euler = new THREE.Euler(0, 0, 0, 'YXZ');
         euler.setFromQuaternion(camera.quaternion);
         ctx.rotate(-euler.y);
+        
+        // Draw island green blob (relative to player)
+        ctx.fillStyle = '#5a7b21';
+        ctx.beginPath();
+        ctx.arc(-pX * scale, -pZ * scale, 450 * scale, 0, Math.PI * 2);
+        ctx.fill();
+        
     } else {
         scale = (width / 1000) * mapZoom;
         ctx.translate(width / 2 + mapPanX, height / 2 + mapPanY);
+        
+        // Draw island green blob (absolute)
+        ctx.fillStyle = '#5a7b21';
+        ctx.beginPath();
+        ctx.arc(0, 0, 450 * scale, 0, Math.PI * 2);
+        ctx.fill();
     }
     
     for (const obj of objects) {
@@ -894,10 +911,21 @@ function init() {
     const leafGeometry = new THREE.DodecahedronGeometry(3.5);
     const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x2e8c33 });
 
+    function getRandomIslandPosition() {
+        let px, pz, dist;
+        do {
+            px = Math.random() * 1000 - 500;
+            pz = Math.random() * 1000 - 500;
+            dist = Math.sqrt(px*px + pz*pz);
+        } while(dist > 400);
+        return { x: px, z: pz };
+    }
+
     for (let i = 0; i < 200; i++) {
         const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-        trunk.position.x = Math.random() * 1000 - 500;
-        trunk.position.z = Math.random() * 1000 - 500;
+        const pos = getRandomIslandPosition();
+        trunk.position.x = pos.x;
+        trunk.position.z = pos.z;
         // Basic height placement based on flat world (will clip through bumpy terrain a bit)
         const groundHeight = getTerrainHeight(trunk.position.x, trunk.position.z);
         trunk.position.y = groundHeight + 2.5; 
@@ -934,8 +962,9 @@ function init() {
     const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x888888 });
     for (let i = 0; i < 150; i++) {
         const rock = new THREE.Mesh(rockGeometry, rockMaterial);
-        rock.position.x = Math.random() * 1000 - 500;
-        rock.position.z = Math.random() * 1000 - 500;
+        const pos = getRandomIslandPosition();
+        rock.position.x = pos.x;
+        rock.position.z = pos.z;
         const groundHeight = getTerrainHeight(rock.position.x, rock.position.z);
         rock.position.y = groundHeight + 1;
         rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
@@ -952,8 +981,9 @@ function init() {
         for (let i = 0; i < count; i++) {
             const ore = new THREE.Mesh(rockGeometry, mat);
             ore.scale.set(0.8, 0.8, 0.8);
-            ore.position.x = Math.random() * 1000 - 500;
-            ore.position.z = Math.random() * 1000 - 500;
+            const pos = getRandomIslandPosition();
+            ore.position.x = pos.x;
+            ore.position.z = pos.z;
             const groundHeight = getTerrainHeight(ore.position.x, ore.position.z);
             ore.position.y = groundHeight + 0.8;
             ore.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
@@ -985,8 +1015,9 @@ function init() {
         }
         const chestMat = new THREE.MeshLambertMaterial({ color: chestColor });
         const chest = new THREE.Mesh(chestGeo, chestMat);
-        chest.position.x = Math.random() * 1000 - 500;
-        chest.position.z = Math.random() * 1000 - 500;
+        const pos = getRandomIslandPosition();
+        chest.position.x = pos.x;
+        chest.position.z = pos.z;
         const groundHeight = getTerrainHeight(chest.position.x, chest.position.z);
         chest.position.y = groundHeight + 0.5;
         chest.rotation.y = Math.random() * Math.PI;
