@@ -69,9 +69,13 @@ let isInventoryOpen = false;
 
 let hasPickaxe = false;
 let hasSword = false;
-let equippedTool = 'hand';
+let hasAxe = false;
+let equippedTool = 'rock'; // Start with rock
 let pickaxeModel = null;
 let swordModel = null;
+let axeModel = null;
+let rockModel = null;
+let appleModel = null;
 let ghostMesh = null;
 let isSwinging = false;
 let swingTime = 0;
@@ -253,11 +257,17 @@ function equipTool(tool, slotIndex) {
     
     if (pickaxeModel) pickaxeModel.visible = false;
     if (swordModel) swordModel.visible = false;
+    if (axeModel) axeModel.visible = false;
+    if (rockModel) rockModel.visible = false;
     if (appleModel) appleModel.visible = false;
     if (ghostMesh) ghostMesh.visible = false;
 
     if (tool === 'pickaxe') {
         if (pickaxeModel) pickaxeModel.visible = true;
+    } else if (tool === 'axe') {
+        if (axeModel) axeModel.visible = true;
+    } else if (tool === 'rock') {
+        if (rockModel) rockModel.visible = true;
     } else if (tool === 'apple') {
         if (appleModel) appleModel.visible = true;
     } else if (tool === 'wall') {
@@ -385,6 +395,33 @@ function init() {
     swordModel.rotation.y = Math.PI / 4;
     swordModel.visible = false;
     camera.add(swordModel);
+
+    // Create Axe View Model
+    axeModel = new THREE.Group();
+    const axeHandleGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.5);
+    const axeHandleMat = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
+    const axeHandle = new THREE.Mesh(axeHandleGeo, axeHandleMat);
+    const axeHeadGeo = new THREE.BoxGeometry(0.2, 0.15, 0.05);
+    const axeHeadMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+    const axeHead = new THREE.Mesh(axeHeadGeo, axeHeadMat);
+    axeHead.position.set(0.1, 0.2, 0);
+    axeModel.add(axeHandle);
+    axeModel.add(axeHead);
+    axeModel.position.set(0.3, -0.2, -0.4);
+    axeModel.rotation.x = 0.5;
+    axeModel.rotation.y = -Math.PI / 4;
+    axeModel.visible = false;
+    camera.add(axeModel);
+
+    // Create Rock View Model (Starting tool)
+    rockModel = new THREE.Group();
+    const rockHandGeo = new THREE.DodecahedronGeometry(0.1);
+    const rockHandMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+    const rockHand = new THREE.Mesh(rockHandGeo, rockHandMat);
+    rockModel.add(rockHand);
+    rockModel.position.set(0.3, -0.2, -0.4);
+    rockModel.visible = false;
+    camera.add(rockModel);
 
     // Create Apple View Model
     appleModel = new THREE.Group();
@@ -672,13 +709,15 @@ function init() {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     document.body.appendChild(renderer.domElement);
 
+    addItem('rock', 1); // Start with a rock
+
     window.addEventListener('resize', onWindowResize);
 
     // Interaction - Mining
     document.addEventListener('mousedown', (e) => {
         if (!controls.isLocked) return;
         if (e.button === 0) { // Left click
-            if (equippedTool === 'pickaxe' || equippedTool === 'sword') {
+            if (['rock', 'axe', 'pickaxe', 'sword'].includes(equippedTool)) {
                 isSwinging = true;
                 swingTime = 0;
             } else if (equippedTool === 'apple') {
@@ -777,20 +816,28 @@ function init() {
                     return;
                 }
 
-                if (obj !== floor) { // Can't mine floor in this prototype easily
-                    let damage = 0.15;
-                    let mobDamage = 5; // Base hand damage
+                if (obj !== floor) {
+                    let isCrit = false;
+                    let objDamage = 5; // Base hand damage to objects
+                    let mobDamage = 5; // Base hand damage to mobs
                     
-                    if (equippedTool === 'pickaxe') {
-                        damage = obj.userData.type === 'rock' ? 0.6 : 0.3; // Pickaxe is great for rocks
+                    if (equippedTool === 'axe') {
+                        objDamage = obj.userData.type === 'wood' ? 25 : 5;
                         mobDamage = 15;
+                        if (obj.userData.type === 'wood') isCrit = true;
+                    } else if (equippedTool === 'pickaxe') {
+                        objDamage = obj.userData.type === 'rock' ? 25 : 5;
+                        mobDamage = 15;
+                        if (obj.userData.type === 'rock') isCrit = true;
                     } else if (equippedTool === 'sword') {
-                        damage = 0.1; // Bad at mining
-                        mobDamage = 25; // Great at fighting
+                        objDamage = 2; // Bad at mining
+                        mobDamage = 35; // Great at fighting
+                        if (obj.userData.type === 'monster' || obj.userData.type === 'boss') isCrit = true;
                     }
 
                     if (obj.userData.type === 'monster' || obj.userData.type === 'boss') {
                         obj.userData.hp -= mobDamage;
+                        showDamageNumber(mobDamage, obj.position, isCrit);
                         
                         // Lifesteal from Dagger
                         if (powerups.dagger > 0) {
@@ -810,25 +857,32 @@ function init() {
                         const knockback = obj.userData.type === 'boss' ? 0.2 : 1; // Boss takes less knockback
                         obj.position.x += (dx / dist) * knockback;
                         obj.position.z += (dz / dist) * knockback;
-                    } else {
-                        obj.scale.y -= damage;
-                        obj.scale.x -= damage / 2;
-                        obj.scale.z -= damage / 2;
-                        obj.position.y -= damage; // Keep grounded roughly
-                    }
-                    
-                    if (obj.userData.type !== 'monster' && obj.scale.y <= 0.1) {
-                        scene.remove(obj);
-                        const index = objects.indexOf(obj);
-                        if (index > -1) objects.splice(index, 1);
+                    } else if (obj.userData.type === 'wood' || obj.userData.type === 'rock') {
+                        if (obj.userData.hp === undefined) obj.userData.hp = 100;
+                        obj.userData.hp -= objDamage;
+                        showDamageNumber(objDamage, obj.position, isCrit);
                         
-                        if (obj.userData.type === 'wood') {
-                            spawnDroppedItem('wood', obj.position);
-                            if (Math.random() < 0.3) {
-                                spawnDroppedItem('apple', obj.position);
+                        // Wiggle animation
+                        const originalRotZ = obj.rotation.z;
+                        obj.rotation.z += 0.1;
+                        setTimeout(() => { if (obj.parent) obj.rotation.z = originalRotZ; }, 100);
+                        
+                        // Shrink slightly instead of full sink
+                        obj.scale.y = Math.max(0.1, obj.userData.hp / 100);
+                        
+                        if (obj.userData.hp <= 0) {
+                            scene.remove(obj);
+                            const index = objects.indexOf(obj);
+                            if (index > -1) objects.splice(index, 1);
+                            
+                            if (obj.userData.type === 'wood') {
+                                spawnDroppedItem('wood', obj.position);
+                                if (Math.random() < 0.3) {
+                                    spawnDroppedItem('apple', obj.position);
+                                }
+                            } else if (obj.userData.type === 'rock') {
+                                spawnDroppedItem('rock', obj.position);
                             }
-                        } else if (obj.userData.type === 'rock') {
-                            spawnDroppedItem('rock', obj.position);
                         }
                     }
                 }
@@ -850,6 +904,15 @@ function init() {
             hasPickaxe = true;
             addItem('pickaxe', 1);
             document.getElementById('btn-craft-pickaxe').style.display = 'none';
+        }
+    });
+
+    document.getElementById('btn-craft-axe').addEventListener('click', (e) => {
+        if (countItem('wood') >= 5 && !hasAxe) {
+            consumeItem('wood', 5);
+            hasAxe = true;
+            addItem('axe', 1);
+            document.getElementById('btn-craft-axe').style.display = 'none';
         }
     });
 
@@ -1149,6 +1212,37 @@ function onWindowResize() {
     renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
+function showDamageNumber(amount, position, isCrit = false) {
+    const container = document.getElementById('damage-container');
+    if (!container) return;
+    
+    // Project 3D position to 2D screen space
+    const vector = position.clone();
+    vector.y += 1; // Show slightly above
+    vector.project(camera);
+    
+    // Only show if in front of camera
+    if (vector.z > 1) return;
+    
+    const x = (vector.x * .5 + .5) * window.innerWidth;
+    const y = (vector.y * -.5 + .5) * window.innerHeight;
+    
+    const el = document.createElement('div');
+    el.className = 'damage-text';
+    el.innerText = '-' + amount;
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    if (isCrit) {
+        el.style.color = '#ffcc00';
+        el.style.fontSize = '32px';
+    }
+    
+    container.appendChild(el);
+    setTimeout(() => {
+        if (el.parentNode) el.parentNode.removeChild(el);
+    }, 1000);
+}
+
 function animate() {
     requestAnimationFrame(animate);
 
@@ -1166,6 +1260,16 @@ function animate() {
         // 0 to 0.5 is day, 0.5 to 1.0 is night
         const cycleProgress = dayTime / cycleLength;
         isNight = cycleProgress > 0.5;
+        
+        // Update Day UI Bar
+        const dayBar = document.getElementById('day-bar');
+        if (isNight) {
+            dayBar.style.backgroundColor = '#4444ff';
+            dayBar.style.width = ((cycleProgress - 0.5) * 200) + '%';
+        } else {
+            dayBar.style.backgroundColor = '#ffd700';
+            dayBar.style.width = (cycleProgress * 200) + '%';
+        }
         
         if (dayCount >= 4 && isNight && !bossSpawnedDay4) {
             bossSpawnedDay4 = true;
@@ -1344,6 +1448,9 @@ function animate() {
 
     let activeModel = null;
     if (equippedTool === 'pickaxe' && pickaxeModel) activeModel = pickaxeModel;
+    else if (equippedTool === 'sword' && swordModel) activeModel = swordModel;
+    else if (equippedTool === 'axe' && axeModel) activeModel = axeModel;
+    else if (equippedTool === 'rock' && rockModel) activeModel = rockModel;
     else if (equippedTool === 'apple' && appleModel) activeModel = appleModel;
 
     if (activeModel) {
