@@ -135,6 +135,89 @@ function updatePowerupUI() {
     container.innerHTML = html;
 }
 
+// Map Colors
+const mapColors = {
+    'rock': '#888888',
+    'wood': '#228B22',
+    'coal': '#222222',
+    'iron_ore': '#aaaaaa',
+    'gold_ore': '#ffcc00',
+    'mithril_ore': '#0088ff',
+    'adamantite_ore': '#00ff66',
+    'shipwreck': '#ff0000'
+};
+
+function drawMap(canvasId, isMinimap) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const width = canvas.width;
+    const height = canvas.height;
+    
+    ctx.clearRect(0, 0, width, height);
+    
+    // Scale from world (-500 to 500) to canvas (0 to width)
+    const scale = isMinimap ? (width / 200) : (width / 1000); // minimap sees 200x200 area around player
+    
+    const pX = camera.position.x;
+    const pZ = camera.position.z;
+    
+    ctx.save();
+    
+    if (isMinimap) {
+        // Center minimap on player
+        ctx.translate(width / 2, height / 2);
+        // Optional: rotate minimap based on camera yaw
+        // const yaw = controls.getAzimuthalAngle();
+        // ctx.rotate(yaw); 
+    }
+    
+    for (const obj of objects) {
+        if (!obj.userData || !obj.userData.type) continue;
+        const color = mapColors[obj.userData.type];
+        if (!color) continue;
+        
+        let mapX, mapZ;
+        if (isMinimap) {
+            // Relative to player
+            mapX = (obj.position.x - pX) * scale;
+            mapZ = (obj.position.z - pZ) * scale;
+            // Cull outside minimap
+            if (mapX < -width/2 || mapX > width/2 || mapZ < -height/2 || mapZ > height/2) continue;
+        } else {
+            // Absolute to world
+            mapX = (obj.position.x + 500) * scale;
+            mapZ = (obj.position.z + 500) * scale;
+        }
+        
+        const size = obj.userData.type === 'shipwreck' ? 6 : 3;
+        
+        ctx.fillStyle = color;
+        ctx.fillRect(mapX - size/2, mapZ - size/2, size, size);
+    }
+    
+    // Draw Player
+    if (isMinimap) {
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(0, 0, 4, 0, Math.PI * 2);
+        ctx.fill();
+    } else {
+        const pMapX = (pX + 500) * scale;
+        const pMapZ = (pZ + 500) * scale;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(pMapX, pMapZ, 5, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    
+    ctx.restore();
+}
+
+window.drawBigMap = function() {
+    drawMap('big-map', false);
+};
+
 function updateInventoryUI() {
     // 1. Update Crafting Recipes Availability
     const woodCount = countItem('wood');
@@ -450,7 +533,7 @@ function init() {
     // Setup Scene
     scene = new THREE.Scene();
     scene.background = new THREE.Color(0x87CEEB); // Sky color
-    scene.fog = new THREE.Fog(0x87CEEB, 0, 150);
+    scene.fog = new THREE.Fog(0x87CEEB, 200, 600);
 
     // Setup Light
     hemiLight = new THREE.HemisphereLight(0xeeeeff, 0x444455, 0.75);
@@ -606,8 +689,24 @@ function init() {
 
     scene.add(controls.object);
 
+    let isMapOpen = false;
+
     // Movement Input
     const onKeyDown = function (event) {
+        if (event.code === 'KeyM') {
+            isMapOpen = !isMapOpen;
+            const bigMapUI = document.getElementById('big-map-container');
+            if (isMapOpen) {
+                controls.unlock();
+                bigMapUI.style.display = 'flex';
+                drawBigMap();
+            } else {
+                bigMapUI.style.display = 'none';
+                document.body.requestPointerLock().catch(e => {});
+            }
+            return;
+        }
+
         if (event.code === 'KeyE' || event.code === 'Tab') {
             event.preventDefault(); // Prevent tab from changing focus
             isInventoryOpen = !isInventoryOpen;
@@ -1765,6 +1864,9 @@ function animate() {
             }
         }
     }
+    
+    // Update Minimap
+    drawMap('minimap', true);
 
     prevTime = time;
 
