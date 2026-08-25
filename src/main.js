@@ -94,6 +94,9 @@ let playerCoins = 0;
 let playerMaxHP = 100;
 let powerups = { sneakers: 0, dumbbell: 0, dagger: 0 };
 
+let bossSpawnedDay4 = false;
+let currentBoss = null;
+
 function getTerrainHeight(x, z) {
     return (Math.sin(x / 30) * Math.cos(z / 30) * 10) + (Math.sin(x / 10) * Math.cos(z / 10) * 2);
 }
@@ -786,7 +789,7 @@ function init() {
                         mobDamage = 25; // Great at fighting
                     }
 
-                    if (obj.userData.type === 'monster') {
+                    if (obj.userData.type === 'monster' || obj.userData.type === 'boss') {
                         obj.userData.hp -= mobDamage;
                         
                         // Lifesteal from Dagger
@@ -796,15 +799,17 @@ function init() {
                         }
                         
                         // Visual feedback for hit
+                        const defaultColor = obj.userData.type === 'boss' ? 0x333333 : 0xff0000;
                         obj.material.color.setHex(0xffffff);
-                        setTimeout(() => { if (obj.parent) obj.material.color.setHex(0xff0000); }, 100);
+                        setTimeout(() => { if (obj.parent) obj.material.color.setHex(defaultColor); }, 100);
                         
                         // Pushback
                         const dx = obj.position.x - camera.position.x;
                         const dz = obj.position.z - camera.position.z;
                         const dist = Math.sqrt(dx*dx + dz*dz);
-                        obj.position.x += (dx / dist) * 1;
-                        obj.position.z += (dz / dist) * 1;
+                        const knockback = obj.userData.type === 'boss' ? 0.2 : 1; // Boss takes less knockback
+                        obj.position.x += (dx / dist) * knockback;
+                        obj.position.z += (dz / dist) * knockback;
                     } else {
                         obj.scale.y -= damage;
                         obj.scale.x -= damage / 2;
@@ -974,6 +979,33 @@ function updateDroppedItems(delta) {
         }
     }
 }
+
+function spawnBoss() {
+    // Big Chunk Boss
+    const bossGeo = new THREE.BoxGeometry(8, 12, 8); // Huge box for now
+    const bossMat = new THREE.MeshLambertMaterial({ color: 0x333333 }); // Dark grey rock
+    const boss = new THREE.Mesh(bossGeo, bossMat);
+    
+    // Spawn 80 units away from player
+    const angle = Math.random() * Math.PI * 2;
+    boss.position.x = camera.position.x + Math.cos(angle) * 80;
+    boss.position.z = camera.position.z + Math.sin(angle) * 80;
+    boss.position.y = getTerrainHeight(boss.position.x, boss.position.z) + 6;
+    
+    boss.castShadow = true;
+    boss.receiveShadow = true;
+    
+    boss.userData = { type: 'boss', hp: 500, maxHp: 500, nextAttack: 0 };
+    scene.add(boss);
+    objects.push(boss);
+    monsters.push(boss);
+    
+    currentBoss = boss;
+    
+    // Show UI
+    document.getElementById('boss-ui').style.display = 'block';
+    document.getElementById('boss-hp-bar').style.width = '100%';
+}
 function updateMonsters(delta) {
     // Spawning logic
     if (isNight && performance.now() > nextMonsterSpawn && monsters.length < 15) { // max 15 monsters
@@ -1008,11 +1040,23 @@ function updateMonsters(delta) {
             objects.splice(objects.indexOf(mob), 1);
             monsters.splice(i, 1);
             
-            // Drop 2-5 coins
-            const coinCount = Math.floor(Math.random() * 4) + 2;
-            for (let c = 0; c < coinCount; c++) {
-                spawnDroppedItem('coin', mob.position);
+            // Drop coins/loot
+            if (mob.userData.type === 'boss') {
+                document.getElementById('boss-ui').style.display = 'none';
+                currentBoss = null;
+                // Loot explosion
+                for (let c = 0; c < 25; c++) spawnDroppedItem('coin', mob.position);
+                for (let c = 0; c < 5; c++) spawnDroppedItem('wood', mob.position);
+                for (let c = 0; c < 3; c++) spawnDroppedItem('apple', mob.position);
+                spawnDroppedItem('dagger', mob.position); // Guaranteed dagger
+            } else {
+                // Normal monster drop
+                const coinCount = Math.floor(Math.random() * 4) + 2;
+                for (let c = 0; c < coinCount; c++) {
+                    spawnDroppedItem('coin', mob.position);
+                }
             }
+            
             continue;
         }
         
@@ -1050,22 +1094,31 @@ function updateMonsters(delta) {
         }
         
         if (!hitWall) {
-            if (dist > 2.5) { // stop at 2.5 units from player
-                const moveSpeed = 10 * delta;
+            const attackRange = mob.userData.type === 'boss' ? 6 : 2.5;
+            if (dist > attackRange) { // stop at attack range
+                const moveSpeed = mob.userData.type === 'boss' ? (4 * delta) : (10 * delta);
                 mob.position.x += dirX * moveSpeed;
                 mob.position.z += dirZ * moveSpeed;
             } else {
                 // Attack player
                 if (performance.now() > mob.userData.nextAttack) {
-                    mob.userData.nextAttack = performance.now() + 1500; // Attack every 1.5s
-                    takeDamage(10); // Deal 10 damage
+                    const atkCooldown = mob.userData.type === 'boss' ? 2500 : 1500;
+                    mob.userData.nextAttack = performance.now() + atkCooldown;
+                    const dmg = mob.userData.type === 'boss' ? 35 : 10;
+                    takeDamage(dmg);
                 }
             }
         }
         
         // Simple terrain height follow
         const groundHeight = getTerrainHeight(mob.position.x, mob.position.z);
-        mob.position.y = groundHeight + 1;
+        const yOffset = mob.userData.type === 'boss' ? 6 : 1; // Boss is taller (height 12, so center is 6)
+        mob.position.y = groundHeight + yOffset;
+        
+        // Update Boss HP UI
+        if (mob.userData.type === 'boss') {
+            document.getElementById('boss-hp-bar').style.width = Math.max(0, (mob.userData.hp / mob.userData.maxHp) * 100) + '%';
+        }
     }
 }
 
@@ -1113,6 +1166,11 @@ function animate() {
         // 0 to 0.5 is day, 0.5 to 1.0 is night
         const cycleProgress = dayTime / cycleLength;
         isNight = cycleProgress > 0.5;
+        
+        if (dayCount >= 4 && isNight && !bossSpawnedDay4) {
+            bossSpawnedDay4 = true;
+            spawnBoss();
+        }
 
         // Interpolate sky color and lighting
         let skyColor = new THREE.Color(0x87CEEB); // Day
