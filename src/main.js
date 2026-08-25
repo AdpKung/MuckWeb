@@ -1,7 +1,9 @@
 import './style.css'
 import * as THREE from 'three'
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js'
+import { generateTextures } from './pixelArt.js'
 
+generateTextures();
 let camera, scene, renderer, controls;
 let dirLight, hemiLight, stars;
 
@@ -168,6 +170,16 @@ function updateInventoryUI() {
         else craftCampfire.classList.add('disabled');
     }
 
+    // Helper to render slot content
+    const renderContent = (slot) => {
+        if (!slot) return '';
+        const countHtml = slot.count > 1 ? `<div class="count">${slot.count}</div>` : '';
+        const imgHtml = window.textureMap && window.textureMap[slot.type] ? 
+            `<img src="${window.textureMap[slot.type]}" style="width:24px; height:24px; image-rendering:pixelated;" />` : 
+            slot.type;
+        return `${imgHtml}${countHtml}`;
+    };
+
     // 2. Generate Inventory Grid (3x9 = 27 slots)
     const invGrid = document.getElementById('mc-inventory-slots');
     if (invGrid) {
@@ -175,9 +187,7 @@ function updateInventoryUI() {
         for (let i = 0; i < 27; i++) {
             const slot = inventorySlots[i];
             if (slot) {
-                const countHtml = slot.count > 1 ? `<div class="count">${slot.count}</div>` : '';
-                // Add dragging attributes
-                invGrid.innerHTML += `<div class="mc-slot" title="${slot.type}" draggable="true" ondragstart="dragStart(event, ${i})" ondragover="dragOver(event)" ondrop="drop(event, ${i})">${slot.type}${countHtml}</div>`;
+                invGrid.innerHTML += `<div class="mc-slot" title="${slot.type}" draggable="true" ondragstart="dragStart(event, ${i})" ondragover="dragOver(event)" ondrop="drop(event, ${i})">${renderContent(slot)}</div>`;
             } else {
                 invGrid.innerHTML += `<div class="mc-slot empty" ondragover="dragOver(event)" ondrop="drop(event, ${i})"></div>`;
             }
@@ -192,12 +202,31 @@ function updateInventoryUI() {
         if (domSlot) {
             const isActive = domSlot.classList.contains('active') ? ' active' : '';
             if (slot) {
-                const countHtml = slot.count > 1 ? `<div class="count">${slot.count}</div>` : '';
                 domSlot.className = `hotbar-slot${isActive}`;
-                domSlot.innerHTML = `${slot.type}${countHtml}`;
+                domSlot.innerHTML = renderContent(slot);
             } else {
                 domSlot.className = `hotbar-slot${isActive} empty`;
                 domSlot.innerHTML = '';
+            }
+        }
+    }
+
+    // 4. Update Crafting Recipes Images
+    const recipeMap = {
+        'btn-craft-workbench': 'workbench',
+        'btn-craft-campfire': 'wood', // fallback
+        'btn-craft-wall': 'wood',
+        'btn-craft-floor': 'wood',
+        'btn-craft-axe': 'axe',
+        'btn-craft-pickaxe': 'pickaxe',
+        'btn-craft-sword': 'sword'
+    };
+    for (const [id, tex] of Object.entries(recipeMap)) {
+        const btn = document.getElementById(id);
+        if (btn) {
+            const slot = btn.querySelector('.recipe-slot');
+            if (slot && window.textureMap && window.textureMap[tex]) {
+                slot.innerHTML = `<img src="${window.textureMap[tex]}" style="width:24px; height:24px; image-rendering:pixelated;" />`;
             }
         }
     }
