@@ -604,7 +604,7 @@ function init() {
 
     // Setup Camera
     camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.y = 2; // Player height
+    camera.position.y = getTerrainHeight(0, 0) + 2; // Player height
 
     // Create Pickaxe View Model
     pickaxeModel = new THREE.Group();
