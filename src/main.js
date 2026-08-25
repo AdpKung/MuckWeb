@@ -110,7 +110,7 @@ let bossSpawnedDay4 = false;
 let currentBoss = null;
 
 function getTerrainHeight(x, z) {
-    let height = (Math.sin(x / 30) * Math.cos(z / 30) * 10) + (Math.sin(x / 10) * Math.cos(z / 10) * 2);
+    let height = (Math.sin(x / 30) * Math.cos(z / 30) * 10) + (Math.sin(x / 10) * Math.cos(z / 10) * 2) + 12;
     // Island falloff
     const dist = Math.sqrt(x*x + z*z);
     const maxRadius = 450;
@@ -700,7 +700,7 @@ function init() {
     });
 
     controls.addEventListener('unlock', function () {
-        if (!isInventoryOpen) {
+        if (!isInventoryOpen && !isMapOpen) {
             blocker.style.display = 'flex';
             instructions.style.display = '';
         }
@@ -884,7 +884,7 @@ function init() {
         depthWrite: false 
     });
     const water = new THREE.Mesh(waterGeometry, waterMaterial);
-    water.position.y = -2; // Water level
+    water.position.y = 0; // Water level
     scene.add(water);
 
     // Generate trees/rocks
