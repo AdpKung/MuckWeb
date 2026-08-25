@@ -1718,6 +1718,10 @@ function die() {
     controls.unlock();
     document.getElementById('game-over-text').style.display = 'block';
     document.getElementById('click-to-play-text').style.display = 'none';
+    const title = document.getElementById('game-title');
+    if (title) title.style.display = 'none';
+    const controlsBox = document.getElementById('controls-box');
+    if (controlsBox) controlsBox.style.display = 'none';
 }
 function onWindowResize() {
     camera.aspect = window.innerWidth / window.innerHeight;

@@ -216,17 +216,34 @@
         </div>
     </div>
     
-    <div id="blocker">
-        <div id="instructions">
-            <h1 id="game-over-text" style="display:none; color:red; font-size:64px; text-shadow: 2px 2px 0 #000;">GAME OVER</h1>
-            <p style="font-size:36px; margin-bottom:10px;" id="click-to-play-text">Click to Play</p>
-            <p>
-                Move: WASD<br/>
-                Jump: SPACE<br/>
-                Look: Mouse<br/>
-                Mine/Attack: Left Click<br/>
-                Inventory: E or Tab
-            </p>
+    <div id="blocker" style="background: radial-gradient(circle, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.8) 100%);">
+        <div id="instructions" style="text-align: center; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+            
+            <h1 id="game-over-text" style="display:none; color:#ff4444; font-size:100px; text-shadow: 4px 4px 0 #000, -2px -2px 0 #fff; margin-bottom: 20px; font-family: 'Arial Black', Impact, sans-serif;">GAME OVER</h1>
+            
+            <!-- Game Title -->
+            <h1 id="game-title" style="font-size: 110px; color: #ffcc00; text-shadow: 6px 6px 0px #000, 0 0 20px rgba(255, 204, 0, 0.6); margin: 0 0 30px 0; font-family: 'Arial Black', Impact, sans-serif; letter-spacing: 5px; transform: rotate(-3deg);">MUCK<span style="color:white; font-size:70px;">WEB</span></h1>
+            
+            <!-- Play Button styling (ID stays the same for main.js) -->
+            <div id="click-to-play-text" style="background-color: #4CAF50; color: white; padding: 15px 50px; font-size: 32px; font-weight: bold; border-radius: 12px; border: 4px solid #fff; box-shadow: 0 8px 0 #2E7D32, 0 15px 25px rgba(0,0,0,0.5); text-transform: uppercase; cursor: pointer; display: inline-block; transition: all 0.1s ease; margin-bottom: 50px;"
+                 onmousedown="this.style.transform='translateY(8px)'; this.style.boxShadow='0 0px 0 #2E7D32';" 
+                 onmouseup="this.style.transform='translateY(0)'; this.style.boxShadow='0 8px 0 #2E7D32';">
+                Play
+            </div>
+
+            <!-- Controls layout -->
+            <div id="controls-box" style="background: rgba(0,0,0,0.7); border: 2px solid #555; padding: 25px 40px; border-radius: 20px; font-size: 18px; text-align: left; display: inline-block; font-family: monospace; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                <h3 style="color:#ffaa00; margin-top:0; margin-bottom:15px; text-align:center; font-size: 24px; font-family: sans-serif; letter-spacing: 2px;">CONTROLS</h3>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; column-gap: 50px;">
+                    <div><span style="color:#aaa;">Movement</span><br><b style="color:#fff; font-size:20px;">W A S D</b></div>
+                    <div><span style="color:#aaa;">Jump</span><br><b style="color:#fff; font-size:20px;">SPACE</b></div>
+                    <div><span style="color:#aaa;">Attack/Mine</span><br><b style="color:#fff; font-size:20px;">LEFT CLICK</b></div>
+                    <div><span style="color:#aaa;">Inventory/Craft</span><br><b style="color:#fff; font-size:20px;">E / TAB</b></div>
+                    <div><span style="color:#aaa;">Map</span><br><b style="color:#fff; font-size:20px;">M</b></div>
+                    <div><span style="color:#aaa;">Look</span><br><b style="color:#fff; font-size:20px;">MOUSE</b></div>
+                </div>
+            </div>
+            
         </div>
     </div>
     
