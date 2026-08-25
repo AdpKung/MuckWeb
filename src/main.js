@@ -110,7 +110,16 @@ let bossSpawnedDay4 = false;
 let currentBoss = null;
 
 function getTerrainHeight(x, z) {
-    return (Math.sin(x / 30) * Math.cos(z / 30) * 10) + (Math.sin(x / 10) * Math.cos(z / 10) * 2);
+    let height = (Math.sin(x / 30) * Math.cos(z / 30) * 10) + (Math.sin(x / 10) * Math.cos(z / 10) * 2);
+    // Island falloff
+    const dist = Math.sqrt(x*x + z*z);
+    const maxRadius = 450;
+    if (dist > maxRadius - 50) {
+        // Linearly drop height down to -50
+        const falloff = (dist - (maxRadius - 50)) / 50; 
+        height -= falloff * 20;
+    }
+    return height;
 }
 
 function addPowerup(type) {
@@ -147,6 +156,13 @@ const mapColors = {
     'shipwreck': '#ff0000'
 };
 
+let mapPanX = 0;
+let mapPanY = 0;
+let mapZoom = 1;
+let isDraggingMap = false;
+let lastMouseX = 0;
+let lastMouseY = 0;
+
 function drawMap(canvasId, isMinimap) {
     const canvas = document.getElementById(canvasId);
     if (!canvas) return;
@@ -156,20 +172,23 @@ function drawMap(canvasId, isMinimap) {
     
     ctx.clearRect(0, 0, width, height);
     
-    // Scale from world (-500 to 500) to canvas (0 to width)
-    const scale = isMinimap ? (width / 200) : (width / 1000); // minimap sees 200x200 area around player
-    
     const pX = camera.position.x;
     const pZ = camera.position.z;
     
     ctx.save();
     
+    let scale;
     if (isMinimap) {
-        // Center minimap on player
+        scale = width / 200;
         ctx.translate(width / 2, height / 2);
-        // Optional: rotate minimap based on camera yaw
-        // const yaw = controls.getAzimuthalAngle();
-        // ctx.rotate(yaw); 
+        
+        // Rotate minimap based on camera yaw
+        const euler = new THREE.Euler(0, 0, 0, 'YXZ');
+        euler.setFromQuaternion(camera.quaternion);
+        ctx.rotate(-euler.y);
+    } else {
+        scale = (width / 1000) * mapZoom;
+        ctx.translate(width / 2 + mapPanX, height / 2 + mapPanY);
     }
     
     for (const obj of objects) {
@@ -179,18 +198,14 @@ function drawMap(canvasId, isMinimap) {
         
         let mapX, mapZ;
         if (isMinimap) {
-            // Relative to player
             mapX = (obj.position.x - pX) * scale;
             mapZ = (obj.position.z - pZ) * scale;
-            // Cull outside minimap
-            if (mapX < -width/2 || mapX > width/2 || mapZ < -height/2 || mapZ > height/2) continue;
         } else {
-            // Absolute to world
-            mapX = (obj.position.x + 500) * scale;
-            mapZ = (obj.position.z + 500) * scale;
+            mapX = obj.position.x * scale;
+            mapZ = obj.position.z * scale;
         }
         
-        const size = obj.userData.type === 'shipwreck' ? 6 : 3;
+        const size = obj.userData.type === 'shipwreck' ? (isMinimap ? 6 : 6 * mapZoom) : (isMinimap ? 3 : 3 * mapZoom);
         
         ctx.fillStyle = color;
         ctx.fillRect(mapX - size/2, mapZ - size/2, size, size);
@@ -202,12 +217,16 @@ function drawMap(canvasId, isMinimap) {
         ctx.beginPath();
         ctx.arc(0, 0, 4, 0, Math.PI * 2);
         ctx.fill();
+        
+        // Draw facing indicator
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(-2, -8, 4, 4);
     } else {
-        const pMapX = (pX + 500) * scale;
-        const pMapZ = (pZ + 500) * scale;
+        const pMapX = pX * scale;
+        const pMapZ = pZ * scale;
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(pMapX, pMapZ, 5, 0, Math.PI * 2);
+        ctx.arc(pMapX, pMapZ, 5 * mapZoom, 0, Math.PI * 2);
         ctx.fill();
     }
     
@@ -855,6 +874,19 @@ function init() {
     scene.add(floor);
     objects.push(floor);
 
+    // Water Plane
+    const waterGeometry = new THREE.PlaneGeometry(2000, 2000);
+    waterGeometry.rotateX(-Math.PI / 2);
+    const waterMaterial = new THREE.MeshLambertMaterial({ 
+        color: 0x1E90FF, 
+        transparent: true, 
+        opacity: 0.8,
+        depthWrite: false 
+    });
+    const water = new THREE.Mesh(waterGeometry, waterMaterial);
+    water.position.y = -2; // Water level
+    scene.add(water);
+
     // Generate trees/rocks
     const trunkGeometry = new THREE.CylinderGeometry(0.6, 0.9, 5, 7);
     const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x6e3d22 });
@@ -1362,6 +1394,41 @@ function init() {
             `;
         }
     });
+
+    // Map Interactivity
+    const bigMapCanvas = document.getElementById('big-map');
+    if (bigMapCanvas) {
+        bigMapCanvas.addEventListener('mousedown', (e) => {
+            isDraggingMap = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+        window.addEventListener('mouseup', () => {
+            isDraggingMap = false;
+        });
+        window.addEventListener('mousemove', (e) => {
+            if (isDraggingMap) {
+                mapPanX += (e.clientX - lastMouseX);
+                mapPanY += (e.clientY - lastMouseY);
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                if (document.getElementById('big-map-container').style.display === 'flex') {
+                    window.drawBigMap();
+                }
+            }
+        });
+        bigMapCanvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            if (e.deltaY < 0) {
+                mapZoom *= 1.2;
+            } else {
+                mapZoom /= 1.2;
+            }
+            if (document.getElementById('big-map-container').style.display === 'flex') {
+                window.drawBigMap();
+            }
+        });
+    }
 }
 
 function spawnDroppedItem(type, position) {
