@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js'
 
 let camera, scene, renderer, controls;
-let dirLight, hemiLight, stars, appleModel;
+let dirLight, hemiLight, stars;
 
 const objects = [];
 let raycaster;
