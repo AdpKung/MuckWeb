@@ -16,6 +16,12 @@ let moveRight = false;
 let canJump = false;
 
 let inventorySlots = Array(27).fill(null);
+let boatState = {
+    hull: false,
+    engine: false,
+    mast: false
+};
+let isGameWon = false;
 
 function addItem(type, count = 1) {
     // 1. Try to stack in existing slot
@@ -194,6 +200,55 @@ function updateInventoryUI() {
     toggleBtn('btn-craft-mithril-axe', woodCount >= 5 && countItem('mithril_bar') >= 5);
     toggleBtn('btn-craft-mithril-pickaxe', woodCount >= 5 && countItem('mithril_bar') >= 5);
     toggleBtn('btn-craft-mithril-sword', woodCount >= 5 && countItem('mithril_bar') >= 5);
+
+    // Shipwreck Repair UI
+    const hullReq = document.getElementById('text-hull-req');
+    if (hullReq) hullReq.innerText = `Wood: ${woodCount}/50`;
+    const btnHull = document.getElementById('btn-repair-hull');
+    if (btnHull) {
+        if (boatState.hull) {
+            btnHull.innerText = 'REPAIRED';
+            btnHull.style.background = '#4CAF50';
+            btnHull.disabled = true;
+        } else {
+            toggleBtn('btn-repair-hull', woodCount >= 50);
+        }
+    }
+
+    const engineReq = document.getElementById('text-engine-req');
+    const ironCount = countItem('iron_bar');
+    if (engineReq) engineReq.innerText = `Iron Bar: ${ironCount}/20`;
+    const btnEngine = document.getElementById('btn-repair-engine');
+    if (btnEngine) {
+        if (boatState.engine) {
+            btnEngine.innerText = 'REPAIRED';
+            btnEngine.style.background = '#4CAF50';
+            btnEngine.disabled = true;
+        } else {
+            toggleBtn('btn-repair-engine', ironCount >= 20);
+        }
+    }
+
+    const mastReq = document.getElementById('text-mast-req');
+    const adamantiteCount = countItem('adamantite_bar');
+    if (mastReq) mastReq.innerText = `Adamantite Bar: ${adamantiteCount}/10`;
+    const btnMast = document.getElementById('btn-repair-mast');
+    if (btnMast) {
+        if (boatState.mast) {
+            btnMast.innerText = 'REPAIRED';
+            btnMast.style.background = '#4CAF50';
+            btnMast.disabled = true;
+        } else {
+            toggleBtn('btn-repair-mast', adamantiteCount >= 10);
+        }
+    }
+    
+    const sailBtn = document.getElementById('btn-sail-away');
+    if (sailBtn) {
+        if (boatState.hull && boatState.engine && boatState.mast) {
+            sailBtn.style.display = 'block';
+        }
+    }
 
     // Helper to render slot content
     const renderContent = (slot) => {
@@ -560,6 +615,7 @@ function init() {
             const benchUI = document.getElementById('workbench-ui');
             const furnaceUI = document.getElementById('furnace-ui');
             const anvilUI = document.getElementById('anvil-ui');
+            const shipwreckUI = document.getElementById('shipwreck-ui');
             
             if (isInventoryOpen) {
                 controls.unlock();
@@ -567,12 +623,14 @@ function init() {
                 benchUI.style.display = 'none';
                 if (furnaceUI) furnaceUI.style.display = 'none';
                 if (anvilUI) anvilUI.style.display = 'none';
+                if (shipwreckUI) shipwreckUI.style.display = 'none';
                 updateInventoryUI();
             } else {
                 invUI.style.display = 'none';
                 benchUI.style.display = 'none';
                 if (furnaceUI) furnaceUI.style.display = 'none';
                 if (anvilUI) anvilUI.style.display = 'none';
+                if (shipwreckUI) shipwreckUI.style.display = 'none';
                 try {
                     // Try to lock, catch if browser blocks it (rate limit)
                     const promise = document.body.requestPointerLock();
@@ -808,6 +866,41 @@ function init() {
         objects.push(chest);
     }
 
+    // Shipwreck Spawning
+    const boatGroup = new THREE.Group();
+    // Hull
+    const hullMesh = new THREE.Mesh(new THREE.BoxGeometry(10, 3, 20), new THREE.MeshLambertMaterial({ color: 0x5c4033 }));
+    hullMesh.position.y = 1.5;
+    hullMesh.castShadow = true;
+    boatGroup.add(hullMesh);
+    // Cabin/Engine room
+    const cabinMesh = new THREE.Mesh(new THREE.BoxGeometry(6, 4, 8), new THREE.MeshLambertMaterial({ color: 0x4a332a }));
+    cabinMesh.position.set(0, 5, -5);
+    cabinMesh.castShadow = true;
+    boatGroup.add(cabinMesh);
+    // Mast (Broken)
+    const mastMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 10), new THREE.MeshLambertMaterial({ color: 0x3d2922 }));
+    mastMesh.position.set(0, 8, 4);
+    mastMesh.rotation.x = Math.PI / 4; // broken look
+    mastMesh.castShadow = true;
+    boatGroup.add(mastMesh);
+    
+    // Create an invisible interaction hitbox for the entire boat
+    const boatHitbox = new THREE.Mesh(new THREE.BoxGeometry(12, 10, 22), new THREE.MeshBasicMaterial({ visible: false }));
+    boatHitbox.position.y = 5;
+    boatHitbox.userData = { type: 'shipwreck' };
+    boatGroup.add(boatHitbox);
+
+    // Place boat randomly but a bit far from center (spawn)
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 200 + Math.random() * 200;
+    boatGroup.position.x = Math.cos(angle) * distance;
+    boatGroup.position.z = Math.sin(angle) * distance;
+    boatGroup.position.y = getTerrainHeight(boatGroup.position.x, boatGroup.position.z);
+    boatGroup.rotation.y = Math.random() * Math.PI;
+    scene.add(boatGroup);
+    objects.push(boatHitbox); // for raycasting
+
     // Renderer Setup
     renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setPixelRatio(window.devicePixelRatio);
@@ -898,6 +991,15 @@ function init() {
                     document.getElementById('workbench-ui').style.display = 'flex';
                     updateInventoryUI();
                     return; // Don't punch the workbench when opening it
+                }
+                
+                // Shipwreck Interaction
+                if (obj.userData && obj.userData.type === 'shipwreck' && equippedTool === 'hand') {
+                    isInventoryOpen = true;
+                    controls.unlock();
+                    document.getElementById('shipwreck-ui').style.display = 'flex';
+                    updateInventoryUI();
+                    return;
                 }
                 
                 // Furnace Interaction
@@ -1118,6 +1220,49 @@ function init() {
     setupAnvilCraft('mithril', 'axe', 5);
     setupAnvilCraft('mithril', 'pickaxe', 5);
     setupAnvilCraft('mithril', 'sword', 5);
+
+    // Shipwreck Repair Logic
+    document.getElementById('btn-repair-hull').addEventListener('click', () => {
+        if (!boatState.hull && countItem('wood') >= 50) {
+            consumeItem('wood', 50);
+            boatState.hull = true;
+            updateInventoryUI();
+        }
+    });
+    
+    document.getElementById('btn-repair-engine').addEventListener('click', () => {
+        if (!boatState.engine && countItem('iron_bar') >= 20) {
+            consumeItem('iron_bar', 20);
+            boatState.engine = true;
+            updateInventoryUI();
+        }
+    });
+
+    document.getElementById('btn-repair-mast').addEventListener('click', () => {
+        if (!boatState.mast && countItem('adamantite_bar') >= 10) {
+            consumeItem('adamantite_bar', 10);
+            boatState.mast = true;
+            updateInventoryUI();
+        }
+    });
+
+    // Victory Logic
+    document.getElementById('btn-sail-away').addEventListener('click', () => {
+        if (boatState.hull && boatState.engine && boatState.mast) {
+            isGameWon = true;
+            document.getElementById('shipwreck-ui').style.display = 'none';
+            document.getElementById('victory-screen').style.display = 'flex';
+            document.exitPointerLock();
+            
+            // Generate stats
+            const totalDays = dayCount;
+            document.getElementById('victory-stats').innerHTML = `
+                Survived for: ${totalDays} Days<br>
+                Max HP: ${playerMaxHP}<br>
+                Coins: ${playerCoins}
+            `;
+        }
+    });
 }
 
 function spawnDroppedItem(type, position) {
@@ -1419,6 +1564,12 @@ function animate() {
 
     const time = performance.now();
     const globalDelta = Math.min((time - prevTime) / 1000, 0.1);
+
+    if (isGameWon) {
+        renderer.render(scene, camera);
+        prevTime = time;
+        return; // Pause game logic
+    }
 
     if (!isDead) {
         dayTime += globalDelta;
