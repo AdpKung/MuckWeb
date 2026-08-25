@@ -41,6 +41,12 @@
         <div class="mc-inventory-container">
             <h2>Workbench</h2>
             <div class="mc-crafting-area" style="margin-top:20px;">
+                <div class="mc-recipe" id="btn-craft-furnace" title="Furnace (15 Rock)">
+                    <div class="mc-slot recipe-slot">Furn</div>
+                </div>
+                <div class="mc-recipe" id="btn-craft-anvil" title="Anvil (5 Iron Bar, 15 Rock)">
+                    <div class="mc-slot recipe-slot">Anvl</div>
+                </div>
                 <div class="mc-recipe" id="btn-craft-axe" title="Wood Axe (5 Wood)">
                     <div class="mc-slot recipe-slot">Axe</div>
                 </div>
@@ -49,6 +55,59 @@
                 </div>
                 <div class="mc-recipe" id="btn-craft-sword" title="Sword (5 Wood, 5 Rock)">
                     <div class="mc-slot recipe-slot">Swrd</div>
+                </div>
+            </div>
+            <p style="margin-top:20px; font-size:12px; color:#aaa; text-align:center;">Press E or Tab to close</p>
+        </div>
+    </div>
+    
+    <!-- Furnace UI -->
+    <div id="furnace-ui" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 40; justify-content: center; align-items: center;">
+        <div class="mc-inventory-container">
+            <h2>Furnace</h2>
+            <div class="mc-crafting-area" style="margin-top:20px;">
+                <div class="mc-recipe" id="btn-smelt-iron" title="Smelt Iron (1 Iron Ore, 1 Coal)">
+                    <div class="mc-slot recipe-slot">Fe</div>
+                </div>
+                <div class="mc-recipe" id="btn-smelt-gold" title="Smelt Gold (1 Gold Ore, 1 Coal)">
+                    <div class="mc-slot recipe-slot">Au</div>
+                </div>
+                <div class="mc-recipe" id="btn-smelt-mithril" title="Smelt Mithril (1 Mithril Ore, 1 Coal)">
+                    <div class="mc-slot recipe-slot">Mi</div>
+                </div>
+                <div class="mc-recipe" id="btn-smelt-adamantite" title="Smelt Adamantite (1 Adamantite Ore, 1 Coal)">
+                    <div class="mc-slot recipe-slot">Ad</div>
+                </div>
+            </div>
+            <p style="margin-top:20px; font-size:12px; color:#aaa; text-align:center;">Press E or Tab to close</p>
+        </div>
+    </div>
+
+    <!-- Anvil UI -->
+    <div id="anvil-ui" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 40; justify-content: center; align-items: center;">
+        <div class="mc-inventory-container">
+            <h2>Anvil</h2>
+            <p style="font-size:14px; text-align:center; color:#555; margin-bottom:10px;">Requires Wood + specific Bars</p>
+            <div class="mc-crafting-area" style="margin-top:10px;">
+                <div class="mc-recipe" id="btn-craft-iron-axe" title="Iron Axe (5 Iron Bar, 5 Wood)">
+                    <div class="mc-slot recipe-slot">IAxe</div>
+                </div>
+                <div class="mc-recipe" id="btn-craft-iron-pickaxe" title="Iron Pickaxe (5 Iron Bar, 5 Wood)">
+                    <div class="mc-slot recipe-slot">IPic</div>
+                </div>
+                <div class="mc-recipe" id="btn-craft-iron-sword" title="Iron Sword (5 Iron Bar, 5 Wood)">
+                    <div class="mc-slot recipe-slot">ISwd</div>
+                </div>
+            </div>
+            <div class="mc-crafting-area" style="margin-top:10px;">
+                <div class="mc-recipe" id="btn-craft-mithril-axe" title="Mithril Axe (5 Mithril Bar, 5 Wood)">
+                    <div class="mc-slot recipe-slot">MAxe</div>
+                </div>
+                <div class="mc-recipe" id="btn-craft-mithril-pickaxe" title="Mithril Pickaxe (5 Mithril Bar, 5 Wood)">
+                    <div class="mc-slot recipe-slot">MPic</div>
+                </div>
+                <div class="mc-recipe" id="btn-craft-mithril-sword" title="Mithril Sword (5 Mithril Bar, 5 Wood)">
+                    <div class="mc-slot recipe-slot">MSwd</div>
                 </div>
             </div>
             <p style="margin-top:20px; font-size:12px; color:#aaa; text-align:center;">Press E or Tab to close</p>

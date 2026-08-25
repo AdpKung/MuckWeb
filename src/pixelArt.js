@@ -133,6 +133,116 @@ const itemSprites = {
         "b__bb__b",
         "b__bb__b",
         "b__bb__b"
+    ],
+    'coal': [
+        "________",
+        "__bbbb__",
+        "_bCCCc__",
+        "bCcccCb_",
+        "bCccccb_",
+        "_bCccb__",
+        "__bbb___",
+        "________"
+    ],
+    'iron_ore': [
+        "__bbbb__",
+        "_bSSSSb_",
+        "bSssSSSb",
+        "bSSsSSSb",
+        "bSsssSSb",
+        "bSSSSSSb",
+        "_bSSSSb_",
+        "__bbbb__"
+    ],
+    'iron_bar': [
+        "________",
+        "________",
+        "__bbbb__",
+        "_bSSSSb_",
+        "bSSSSSSb",
+        "bssssssb",
+        "bbbbbbbb",
+        "________"
+    ],
+    'gold_ore': [
+        "__bbbb__",
+        "_bYYYYb_",
+        "bYyyYYYb",
+        "bYYyYYYb",
+        "bYyyyYYb",
+        "bYYYYYYb",
+        "_bYYYYb_",
+        "__bbbb__"
+    ],
+    'gold_bar': [
+        "________",
+        "________",
+        "__bbbb__",
+        "_bYYYYb_",
+        "bYYYYYYb",
+        "byyyyyyb",
+        "bbbbbbbb",
+        "________"
+    ],
+    'mithril_ore': [
+        "__bbbb__",
+        "_bMMMMb_",
+        "bMmmMMMb",
+        "bMMmMMMb",
+        "bMmmmMMb",
+        "bMMMMMMb",
+        "_bMMMMb_",
+        "__bbbb__"
+    ],
+    'mithril_bar': [
+        "________",
+        "________",
+        "__bbbb__",
+        "_bMMMMb_",
+        "bMMMMMMb",
+        "bmmmmmmb",
+        "bbbbbbbb",
+        "________"
+    ],
+    'adamantite_ore': [
+        "__bbbb__",
+        "_bAAAAb_",
+        "bAaaAAAb",
+        "bAAaAAAb",
+        "bAaaaAAb",
+        "bAAAAAAb",
+        "_bAAAAb_",
+        "__bbbb__"
+    ],
+    'adamantite_bar': [
+        "________",
+        "________",
+        "__bbbb__",
+        "_bAAAAb_",
+        "bAAAAAAb",
+        "baaaaaab",
+        "bbbbbbbb",
+        "________"
+    ],
+    'furnace': [
+        "__bbbb__",
+        "_bDDDDb_",
+        "bDddDDDb",
+        "bDD__DDb",
+        "bDDYYDDb",
+        "bDDYYDDb",
+        "_bDDDDb_",
+        "__bbbb__"
+    ],
+    'anvil': [
+        "________",
+        "__bbbb__",
+        "_bSSSSb_",
+        "bbssssbb",
+        "_bssssb_",
+        "_bssssb_",
+        "bbssssbb",
+        "bbbbbbbb"
     ]
 };
 

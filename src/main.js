@@ -169,6 +169,31 @@ function updateInventoryUI() {
         if (woodCount >= 10 && rockCount >= 5) craftCampfire.classList.remove('disabled');
         else craftCampfire.classList.add('disabled');
     }
+    
+    // New Stations
+    const toggleBtn = (id, condition) => {
+        const el = document.getElementById(id);
+        if (el) {
+            if (condition) el.classList.remove('disabled');
+            else el.classList.add('disabled');
+        }
+    };
+    toggleBtn('btn-craft-furnace', rockCount >= 15);
+    toggleBtn('btn-craft-anvil', rockCount >= 15 && countItem('iron_bar') >= 5);
+    
+    // Furnace Smelting
+    toggleBtn('btn-smelt-iron', countItem('iron_ore') >= 1 && countItem('coal') >= 1);
+    toggleBtn('btn-smelt-gold', countItem('gold_ore') >= 1 && countItem('coal') >= 1);
+    toggleBtn('btn-smelt-mithril', countItem('mithril_ore') >= 1 && countItem('coal') >= 1);
+    toggleBtn('btn-smelt-adamantite', countItem('adamantite_ore') >= 1 && countItem('coal') >= 1);
+    
+    // Anvil Crafting
+    toggleBtn('btn-craft-iron-axe', woodCount >= 5 && countItem('iron_bar') >= 5);
+    toggleBtn('btn-craft-iron-pickaxe', woodCount >= 5 && countItem('iron_bar') >= 5);
+    toggleBtn('btn-craft-iron-sword', woodCount >= 5 && countItem('iron_bar') >= 5);
+    toggleBtn('btn-craft-mithril-axe', woodCount >= 5 && countItem('mithril_bar') >= 5);
+    toggleBtn('btn-craft-mithril-pickaxe', woodCount >= 5 && countItem('mithril_bar') >= 5);
+    toggleBtn('btn-craft-mithril-sword', woodCount >= 5 && countItem('mithril_bar') >= 5);
 
     // Helper to render slot content
     const renderContent = (slot) => {
@@ -214,12 +239,24 @@ function updateInventoryUI() {
     // 4. Update Crafting Recipes Images
     const recipeMap = {
         'btn-craft-workbench': 'workbench',
+        'btn-craft-furnace': 'furnace',
+        'btn-craft-anvil': 'anvil',
         'btn-craft-campfire': 'wood', // fallback
         'btn-craft-wall': 'wood',
         'btn-craft-floor': 'wood',
         'btn-craft-axe': 'axe',
         'btn-craft-pickaxe': 'pickaxe',
-        'btn-craft-sword': 'sword'
+        'btn-craft-sword': 'sword',
+        'btn-smelt-iron': 'iron_bar',
+        'btn-smelt-gold': 'gold_bar',
+        'btn-smelt-mithril': 'mithril_bar',
+        'btn-smelt-adamantite': 'adamantite_bar',
+        'btn-craft-iron-axe': 'axe',
+        'btn-craft-iron-pickaxe': 'pickaxe',
+        'btn-craft-iron-sword': 'sword',
+        'btn-craft-mithril-axe': 'axe',
+        'btn-craft-mithril-pickaxe': 'pickaxe',
+        'btn-craft-mithril-sword': 'sword'
     };
     for (const [id, tex] of Object.entries(recipeMap)) {
         const btn = document.getElementById(id);
@@ -316,9 +353,19 @@ function equipTool(tool, slotIndex) {
             ghostMesh.geometry = new THREE.CylinderGeometry(1, 1, 0.5, 8);
             ghostMesh.visible = true;
         }
+    } else if (tool === 'furnace') {
+        if (ghostMesh) {
+            ghostMesh.geometry = new THREE.BoxGeometry(2, 2, 2);
+            ghostMesh.visible = true;
+        }
+    } else if (tool === 'anvil') {
+        if (ghostMesh) {
+            ghostMesh.geometry = new THREE.BoxGeometry(2, 1, 1);
+            ghostMesh.visible = true;
+        }
     } else if (tool === 'workbench') {
         if (ghostMesh) {
-            ghostMesh.geometry = new THREE.BoxGeometry(2, 1.5, 2);
+            ghostMesh.geometry = new THREE.BoxGeometry(2, 1, 2);
             ghostMesh.visible = true;
         }
     }
@@ -511,15 +558,21 @@ function init() {
             isInventoryOpen = !isInventoryOpen;
             const invUI = document.getElementById('inventory-ui');
             const benchUI = document.getElementById('workbench-ui');
+            const furnaceUI = document.getElementById('furnace-ui');
+            const anvilUI = document.getElementById('anvil-ui');
             
             if (isInventoryOpen) {
                 controls.unlock();
                 invUI.style.display = 'flex'; // Tab opens normal inventory
                 benchUI.style.display = 'none';
+                if (furnaceUI) furnaceUI.style.display = 'none';
+                if (anvilUI) anvilUI.style.display = 'none';
                 updateInventoryUI();
             } else {
                 invUI.style.display = 'none';
                 benchUI.style.display = 'none';
+                if (furnaceUI) furnaceUI.style.display = 'none';
+                if (anvilUI) anvilUI.style.display = 'none';
                 try {
                     // Try to lock, catch if browser blocks it (rate limit)
                     const promise = document.body.requestPointerLock();
@@ -699,10 +752,35 @@ function init() {
         rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
         rock.castShadow = true;
         rock.receiveShadow = true;
-        rock.userData = { type: 'rock' };
+        rock.userData = { type: 'rock', maxHp: 100 };
         scene.add(rock);
         objects.push(rock);
     }
+    
+    // Ores
+    function spawnOre(type, color, count, maxHp) {
+        const mat = new THREE.MeshLambertMaterial({ color: color });
+        for (let i = 0; i < count; i++) {
+            const ore = new THREE.Mesh(rockGeometry, mat);
+            ore.scale.set(0.8, 0.8, 0.8);
+            ore.position.x = Math.random() * 1000 - 500;
+            ore.position.z = Math.random() * 1000 - 500;
+            const groundHeight = getTerrainHeight(ore.position.x, ore.position.z);
+            ore.position.y = groundHeight + 0.8;
+            ore.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            ore.castShadow = true;
+            ore.receiveShadow = true;
+            ore.userData = { type: type, maxHp: maxHp };
+            scene.add(ore);
+            objects.push(ore);
+        }
+    }
+    
+    spawnOre('coal', 0x222222, 60, 100);
+    spawnOre('iron_ore', 0xaaaaaa, 50, 150);
+    spawnOre('gold_ore', 0xffcc00, 30, 250);
+    spawnOre('mithril_ore', 0x0088ff, 20, 400);
+    spawnOre('adamantite_ore', 0x00ff66, 10, 600);
 
     // Chest Generation
     const chestGeo = new THREE.BoxGeometry(1.5, 1, 1.5);
@@ -762,18 +840,18 @@ function init() {
                     }
                     return; // Don't mine when eating
                 }
-            } else if (equippedTool === 'wall' || equippedTool === 'floor' || equippedTool === 'campfire' || equippedTool === 'workbench') {
+            } else if (['wall', 'floor', 'campfire', 'workbench', 'furnace', 'anvil'].includes(equippedTool)) {
                 if (ghostMesh && ghostMesh.material.color.getHex() === 0x00ff00 && countItem(equippedTool) > 0) {
                     consumeItem(equippedTool, 1);
                     
                     const buildGeo = ghostMesh.geometry.clone();
                     let buildMat;
-                    if (equippedTool === 'campfire') {
-                        buildMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
+                    if (equippedTool === 'campfire' || equippedTool === 'furnace' || equippedTool === 'anvil') {
+                        buildMat = new THREE.MeshLambertMaterial({ color: 0x555555 }); // stone
                     } else if (equippedTool === 'workbench') {
-                        buildMat = new THREE.MeshLambertMaterial({ color: 0x5c4033 });
+                        buildMat = new THREE.MeshLambertMaterial({ color: 0x5c4033 }); // dark wood
                     } else {
-                        buildMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                        buildMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 }); // wood
                     }
                     const buildMesh = new THREE.Mesh(buildGeo, buildMat);
                     buildMesh.position.copy(ghostMesh.position);
@@ -821,6 +899,24 @@ function init() {
                     updateInventoryUI();
                     return; // Don't punch the workbench when opening it
                 }
+                
+                // Furnace Interaction
+                if (obj.userData && obj.userData.type === 'furnace' && equippedTool === 'hand') {
+                    isInventoryOpen = true;
+                    controls.unlock();
+                    document.getElementById('furnace-ui').style.display = 'flex';
+                    updateInventoryUI();
+                    return;
+                }
+                
+                // Anvil Interaction
+                if (obj.userData && obj.userData.type === 'anvil' && equippedTool === 'hand') {
+                    isInventoryOpen = true;
+                    controls.unlock();
+                    document.getElementById('anvil-ui').style.display = 'flex';
+                    updateInventoryUI();
+                    return;
+                }
 
                 // Chest Interaction
                 if (obj.userData && obj.userData.type.startsWith('chest_')) {
@@ -855,9 +951,10 @@ function init() {
                         mobDamage = 15;
                         if (obj.userData.type === 'wood') isCrit = true;
                     } else if (equippedTool === 'pickaxe') {
-                        objDamage = obj.userData.type === 'rock' ? 25 : 5;
+                        const isRockOrOre = obj.userData.type === 'rock' || obj.userData.type.endsWith('_ore');
+                        objDamage = isRockOrOre ? 25 : 5;
                         mobDamage = 15;
-                        if (obj.userData.type === 'rock') isCrit = true;
+                        if (isRockOrOre) isCrit = true;
                     } else if (equippedTool === 'sword') {
                         objDamage = 2; // Bad at mining
                         mobDamage = 35; // Great at fighting
@@ -886,8 +983,8 @@ function init() {
                         const knockback = obj.userData.type === 'boss' ? 0.2 : 1; // Boss takes less knockback
                         obj.position.x += (dx / dist) * knockback;
                         obj.position.z += (dz / dist) * knockback;
-                    } else if (obj.userData.type === 'wood' || obj.userData.type === 'rock') {
-                        if (obj.userData.hp === undefined) obj.userData.hp = 100;
+                    } else if (obj.userData.type === 'wood' || obj.userData.type === 'rock' || obj.userData.type.endsWith('_ore')) {
+                        if (obj.userData.hp === undefined) obj.userData.hp = obj.userData.maxHp || 100;
                         obj.userData.hp -= objDamage;
                         showDamageNumber(objDamage, obj.position, isCrit);
                         
@@ -897,7 +994,8 @@ function init() {
                         setTimeout(() => { if (obj.parent) obj.rotation.z = originalRotZ; }, 100);
                         
                         // Shrink slightly instead of full sink
-                        obj.scale.y = Math.max(0.1, obj.userData.hp / 100);
+                        const maxHp = obj.userData.maxHp || 100;
+                        obj.scale.y = Math.max(0.1, obj.userData.hp / maxHp);
                         
                         if (obj.userData.hp <= 0) {
                             scene.remove(obj);
@@ -909,8 +1007,8 @@ function init() {
                                 if (Math.random() < 0.3) {
                                     spawnDroppedItem('apple', obj.position);
                                 }
-                            } else if (obj.userData.type === 'rock') {
-                                spawnDroppedItem('rock', obj.position);
+                            } else {
+                                spawnDroppedItem(obj.userData.type, obj.position);
                             }
                         }
                     }
@@ -976,6 +1074,50 @@ function init() {
             addItem('floor', 1);
         }
     });
+
+    document.getElementById('btn-craft-furnace').addEventListener('click', () => {
+        if (countItem('rock') >= 15) {
+            consumeItem('rock', 15);
+            addItem('furnace', 1);
+        }
+    });
+    document.getElementById('btn-craft-anvil').addEventListener('click', () => {
+        if (countItem('rock') >= 15 && countItem('iron_bar') >= 5) {
+            consumeItem('rock', 15);
+            consumeItem('iron_bar', 5);
+            addItem('anvil', 1);
+        }
+    });
+
+    const setupSmelt = (ore, bar) => {
+        document.getElementById(`btn-smelt-${ore.split('_')[0]}`).addEventListener('click', () => {
+            if (countItem(ore) >= 1 && countItem('coal') >= 1) {
+                consumeItem(ore, 1);
+                consumeItem('coal', 1);
+                addItem(bar, 1);
+            }
+        });
+    };
+    setupSmelt('iron_ore', 'iron_bar');
+    setupSmelt('gold_ore', 'gold_bar');
+    setupSmelt('mithril_ore', 'mithril_bar');
+    setupSmelt('adamantite_ore', 'adamantite_bar');
+
+    const setupAnvilCraft = (tier, item, cost) => {
+        document.getElementById(`btn-craft-${tier}-${item}`).addEventListener('click', () => {
+            if (countItem(`${tier}_bar`) >= cost && countItem('wood') >= 5) {
+                consumeItem(`${tier}_bar`, cost);
+                consumeItem('wood', 5);
+                addItem(item, 1);
+            }
+        });
+    };
+    setupAnvilCraft('iron', 'axe', 5);
+    setupAnvilCraft('iron', 'pickaxe', 5);
+    setupAnvilCraft('iron', 'sword', 5);
+    setupAnvilCraft('mithril', 'axe', 5);
+    setupAnvilCraft('mithril', 'pickaxe', 5);
+    setupAnvilCraft('mithril', 'sword', 5);
 }
 
 function spawnDroppedItem(type, position) {
