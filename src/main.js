@@ -146,8 +146,8 @@ function updatePowerupUI() {
 
 // Map Colors
 const mapColors = {
-    'rock': '#888888',
-    'wood': '#228B22',
+    'rock': '#3a3a40',
+    'wood': '#142b17',
     'coal': '#222222',
     'iron_ore': '#aaaaaa',
     'gold_ore': '#ffcc00',
@@ -173,7 +173,7 @@ function drawMap(canvasId, isMinimap) {
     ctx.clearRect(0, 0, width, height);
     
     // Fill ocean background
-    ctx.fillStyle = '#1E90FF';
+    ctx.fillStyle = '#103040';
     ctx.fillRect(0, 0, width, height);
     
     const pX = camera.position.x;
@@ -192,7 +192,7 @@ function drawMap(canvasId, isMinimap) {
         ctx.rotate(-euler.y);
         
         // Draw island green blob (relative to player)
-        ctx.fillStyle = '#5a7b21';
+        ctx.fillStyle = '#304022';
         ctx.beginPath();
         ctx.arc(-pX * scale, -pZ * scale, 450 * scale, 0, Math.PI * 2);
         ctx.fill();
@@ -202,7 +202,7 @@ function drawMap(canvasId, isMinimap) {
         ctx.translate(width / 2 + mapPanX, height / 2 + mapPanY);
         
         // Draw island green blob (absolute)
-        ctx.fillStyle = '#5a7b21';
+        ctx.fillStyle = '#304022';
         ctx.beginPath();
         ctx.arc(0, 0, 450 * scale, 0, Math.PI * 2);
         ctx.fill();
@@ -568,15 +568,15 @@ animate();
 function init() {
     // Setup Scene
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x87CEEB); // Sky color
-    scene.fog = new THREE.Fog(0x87CEEB, 200, 600);
+    scene.background = new THREE.Color(0x3a4b5c); // Dark overcast sky
+    scene.fog = new THREE.Fog(0x3a4b5c, 30, 250); // Thicker fog closer to player
 
     // Setup Light
-    hemiLight = new THREE.HemisphereLight(0xeeeeff, 0x444455, 0.75);
+    hemiLight = new THREE.HemisphereLight(0x7a8a9c, 0x111612, 0.4);
     hemiLight.position.set(0.5, 1, 0.75);
     scene.add(hemiLight);
 
-    dirLight = new THREE.DirectionalLight(0xffeedd, 0.8);
+    dirLight = new THREE.DirectionalLight(0xdab488, 0.6); // Pale, grim sunlight
     dirLight.position.set(50, 100, 50);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 2048;
@@ -885,7 +885,7 @@ function init() {
     }
     floorGeometry.computeVertexNormals();
 
-    const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x55aa55 });
+    const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x304022 });
     const floor = new THREE.Mesh(floorGeometry, floorMaterial);
     floor.receiveShadow = true;
     scene.add(floor);
@@ -895,7 +895,7 @@ function init() {
     const waterGeometry = new THREE.PlaneGeometry(2000, 2000);
     waterGeometry.rotateX(-Math.PI / 2);
     const waterMaterial = new THREE.MeshLambertMaterial({ 
-        color: 0x1E90FF, 
+        color: 0x103040, 
         transparent: true, 
         opacity: 0.8,
         depthWrite: false 
@@ -906,10 +906,10 @@ function init() {
 
     // Generate trees/rocks
     const trunkGeometry = new THREE.CylinderGeometry(0.6, 0.9, 5, 7);
-    const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x6e3d22 });
+    const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x2b1e16 });
     // Use Dodecahedron for low-poly leafy top instead of a box
     const leafGeometry = new THREE.DodecahedronGeometry(3.5);
-    const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x2e8c33 });
+    const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x142b17 });
 
     function getRandomIslandPosition() {
         let px, pz, dist;
@@ -959,7 +959,7 @@ function init() {
     }
 
     const rockGeometry = new THREE.DodecahedronGeometry(2);
-    const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x888888 });
+    const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x3a3a40 });
     for (let i = 0; i < 150; i++) {
         const rock = new THREE.Mesh(rockGeometry, rockMaterial);
         const pos = getRandomIslandPosition();
@@ -1800,20 +1800,20 @@ function animate() {
         }
 
         // Interpolate sky color and lighting
-        let skyColor = new THREE.Color(0x87CEEB); // Day
-        let lightIntensity = 0.8;
+        let skyColor = new THREE.Color(0x3a4b5c); // Dark Fantasy Day (Overcast slate)
+        let lightIntensity = 0.5; // Dimmer day
         let starOpacity = 0;
         
         if (isNight) {
-            skyColor = new THREE.Color(0x050520); // Night
-            lightIntensity = 0.1;
+            skyColor = new THREE.Color(0x02020a); // Dark Fantasy Night (Pitch black)
+            lightIntensity = 0.05; // Very dark night
             starOpacity = 1;
         } else {
             const transitionNight = Math.max(0, Math.min(1, (cycleProgress - 0.4) * 10)); // fade to night at 0.4-0.5
-            skyColor.lerp(new THREE.Color(0x050520), transitionNight);
+            skyColor.lerp(new THREE.Color(0x02020a), transitionNight);
             
             const transitionDay = Math.max(0, Math.min(1, (cycleProgress - 0.9) * 10)); // fade to day at 0.9-1.0
-            skyColor.lerp(new THREE.Color(0x87CEEB), transitionDay);
+            skyColor.lerp(new THREE.Color(0x3a4b5c), transitionDay);
             
             if (cycleProgress > 0.4 && cycleProgress < 0.5) {
                 lightIntensity = 0.8 - (transitionNight * 0.7);
