@@ -214,12 +214,15 @@ function drawMap(canvasId, isMinimap) {
         if (!color) continue;
         
         let mapX, mapZ;
+        const worldPos = new THREE.Vector3();
+        obj.getWorldPosition(worldPos);
+
         if (isMinimap) {
-            mapX = (obj.position.x - pX) * scale;
-            mapZ = (obj.position.z - pZ) * scale;
+            mapX = (worldPos.x - pX) * scale;
+            mapZ = (worldPos.z - pZ) * scale;
         } else {
-            mapX = obj.position.x * scale;
-            mapZ = obj.position.z * scale;
+            mapX = worldPos.x * scale;
+            mapZ = worldPos.z * scale;
         }
         
         const size = obj.userData.type === 'shipwreck' ? (isMinimap ? 6 : 6 * mapZoom) : (isMinimap ? 3 : 3 * mapZoom);
@@ -924,47 +927,49 @@ function init() {
     }
 
     for (let i = 0; i < 200; i++) {
-        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+        const treeGroup = new THREE.Group();
         const pos = getRandomIslandPosition();
-        trunk.position.x = pos.x;
-        trunk.position.z = pos.z;
-        const groundHeight = getTerrainHeight(trunk.position.x, trunk.position.z);
-        trunk.position.y = groundHeight + 2.5; 
-        trunk.rotation.set(0, (Math.floor(Math.random() * 4) * Math.PI) / 2, 0); // Rotate 90 degree increments only
+        treeGroup.position.x = pos.x;
+        treeGroup.position.z = pos.z;
+        const groundHeight = getTerrainHeight(pos.x, pos.z);
+        treeGroup.position.y = groundHeight; 
+        treeGroup.rotation.set(0, (Math.floor(Math.random() * 4) * Math.PI) / 2, 0); // Rotate 90 degree increments only
+        treeGroup.userData = { type: 'wood', hp: 100, maxHp: 100 };
+        scene.add(treeGroup);
+        // We do NOT add the group to objects directly, because raycast needs meshes.
+        // We'll add the child meshes to objects and link them to the group.
+
+        // Trunk (height 5, centered at 2.5)
+        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+        trunk.position.y = 2.5; 
         trunk.castShadow = true;
         trunk.receiveShadow = true;
-        trunk.userData = { type: 'wood' };
-        scene.add(trunk);
+        trunk.userData = { type: 'wood', parentGroup: treeGroup };
+        treeGroup.add(trunk);
         objects.push(trunk);
         
         // Leaves (Bottom layer)
         const leaf1 = new THREE.Mesh(leafGeoBottom, leafMaterial);
-        leaf1.position.copy(trunk.position);
-        leaf1.position.y += 2.5;
-        leaf1.rotation.copy(trunk.rotation);
+        leaf1.position.y = 5.5;
         leaf1.castShadow = true;
-        leaf1.userData = { type: 'wood' };
-        scene.add(leaf1);
+        leaf1.userData = { type: 'wood', parentGroup: treeGroup };
+        treeGroup.add(leaf1);
         objects.push(leaf1); 
 
         // Leaves (Middle layer)
         const leaf2 = new THREE.Mesh(leafGeoMiddle, leafMaterial);
-        leaf2.position.copy(trunk.position);
-        leaf2.position.y += 4.5;
-        leaf2.rotation.copy(trunk.rotation);
+        leaf2.position.y = 7.5;
         leaf2.castShadow = true;
-        leaf2.userData = { type: 'wood' };
-        scene.add(leaf2);
+        leaf2.userData = { type: 'wood', parentGroup: treeGroup };
+        treeGroup.add(leaf2);
         objects.push(leaf2);
 
         // Leaves (Top layer)
         const leaf3 = new THREE.Mesh(leafGeoTop, leafMaterial);
-        leaf3.position.copy(trunk.position);
-        leaf3.position.y += 6.0;
-        leaf3.rotation.copy(trunk.rotation);
+        leaf3.position.y = 9.0;
         leaf3.castShadow = true;
-        leaf3.userData = { type: 'wood' };
-        scene.add(leaf3);
+        leaf3.userData = { type: 'wood', parentGroup: treeGroup };
+        treeGroup.add(leaf3);
         objects.push(leaf3);
     }
 
@@ -1168,7 +1173,10 @@ function init() {
             const intersects = interactRay.intersectObjects(objects, false);
             
             if (intersects.length > 0 && intersects[0].distance < 10) { // Mining range
-                const obj = intersects[0].object;
+                let obj = intersects[0].object;
+                if (obj.userData && obj.userData.parentGroup) {
+                    obj = obj.userData.parentGroup;
+                }
                 
                 // Workbench Interaction
                 if (obj.userData && obj.userData.type === 'workbench' && equippedTool === 'hand') {
@@ -1287,8 +1295,15 @@ function init() {
                         
                         if (obj.userData.hp <= 0) {
                             scene.remove(obj);
-                            const index = objects.indexOf(obj);
-                            if (index > -1) objects.splice(index, 1);
+                            if (obj.children && obj.children.length > 0) {
+                                obj.children.forEach(child => {
+                                    const index = objects.indexOf(child);
+                                    if (index > -1) objects.splice(index, 1);
+                                });
+                            } else {
+                                const index = objects.indexOf(obj);
+                                if (index > -1) objects.splice(index, 1);
+                            }
                             
                             if (obj.userData.type === 'wood') {
                                 spawnDroppedItem('wood', obj.position);
