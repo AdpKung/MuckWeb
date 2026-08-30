@@ -568,15 +568,15 @@ animate();
 function init() {
     // Setup Scene
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x3a4b5c); // Dark overcast sky
-    scene.fog = new THREE.Fog(0x3a4b5c, 30, 250); // Thicker fog closer to player
+    scene.background = new THREE.Color(0x4a5d72); // Slightly lighter overcast sky
+    scene.fog = new THREE.Fog(0x4a5d72, 80, 400); // Push fog back a bit
 
     // Setup Light
-    hemiLight = new THREE.HemisphereLight(0x7a8a9c, 0x111612, 0.4);
+    hemiLight = new THREE.HemisphereLight(0x9aaacb, 0x223322, 0.6); // Brighter ambient
     hemiLight.position.set(0.5, 1, 0.75);
     scene.add(hemiLight);
 
-    dirLight = new THREE.DirectionalLight(0xdab488, 0.6); // Pale, grim sunlight
+    dirLight = new THREE.DirectionalLight(0xe8d0b3, 0.8); // Brighter sunlight
     dirLight.position.set(50, 100, 50);
     dirLight.castShadow = true;
     dirLight.shadow.mapSize.width = 2048;
@@ -1800,26 +1800,26 @@ function animate() {
         }
 
         // Interpolate sky color and lighting
-        let skyColor = new THREE.Color(0x3a4b5c); // Dark Fantasy Day (Overcast slate)
-        let lightIntensity = 0.5; // Dimmer day
+        let skyColor = new THREE.Color(0x4a5d72); // Lighter Dark Fantasy Day
+        let lightIntensity = 0.8; // Brighter day light
         let starOpacity = 0;
         
         if (isNight) {
-            skyColor = new THREE.Color(0x02020a); // Dark Fantasy Night (Pitch black)
-            lightIntensity = 0.05; // Very dark night
+            skyColor = new THREE.Color(0x060614); // Slightly brighter night
+            lightIntensity = 0.2; // Brighter night light
             starOpacity = 1;
         } else {
             const transitionNight = Math.max(0, Math.min(1, (cycleProgress - 0.4) * 10)); // fade to night at 0.4-0.5
-            skyColor.lerp(new THREE.Color(0x02020a), transitionNight);
+            skyColor.lerp(new THREE.Color(0x060614), transitionNight);
             
             const transitionDay = Math.max(0, Math.min(1, (cycleProgress - 0.9) * 10)); // fade to day at 0.9-1.0
-            skyColor.lerp(new THREE.Color(0x3a4b5c), transitionDay);
+            skyColor.lerp(new THREE.Color(0x4a5d72), transitionDay);
             
             if (cycleProgress > 0.4 && cycleProgress < 0.5) {
-                lightIntensity = 0.8 - (transitionNight * 0.7);
+                lightIntensity = 0.8 - (transitionNight * 0.6); // from 0.8 down to 0.2
                 starOpacity = transitionNight;
             } else if (cycleProgress > 0.9 && cycleProgress < 1.0) {
-                lightIntensity = 0.1 + (transitionDay * 0.7);
+                lightIntensity = 0.2 + (transitionDay * 0.6); // from 0.2 up to 0.8
                 starOpacity = 1 - transitionDay;
             }
         }
