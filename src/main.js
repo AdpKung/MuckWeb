@@ -609,12 +609,12 @@ function init() {
     // Create Pickaxe View Model
     pickaxeModel = new THREE.Group();
     
-    const handleGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.5);
+    const handleGeo = new THREE.BoxGeometry(0.04, 0.5, 0.04);
     const handleMat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
     const handle = new THREE.Mesh(handleGeo, handleMat);
     handle.position.y = -0.1;
     
-    const headGeo = new THREE.BoxGeometry(0.4, 0.05, 0.05);
+    const headGeo = new THREE.BoxGeometry(0.4, 0.06, 0.06);
     const headMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
     const head = new THREE.Mesh(headGeo, headMat);
     head.position.y = 0.15;
@@ -629,13 +629,13 @@ function init() {
     pickaxeModel.visible = false; // Hidden until crafted
     camera.add(pickaxeModel);
 
-    // Create Sword View Model
+    // Create Sword View Model (Voxel)
     swordModel = new THREE.Group();
-    const swordHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2), new THREE.MeshLambertMaterial({ color: 0x8B4513 }));
+    const swordHandle = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.2, 0.04), new THREE.MeshLambertMaterial({ color: 0x8B4513 }));
     swordHandle.position.y = -0.2;
-    const swordBlade = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.6, 0.02), new THREE.MeshLambertMaterial({ color: 0xaaaaaa }));
+    const swordBlade = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.6, 0.02), new THREE.MeshLambertMaterial({ color: 0xaaaaaa }));
     swordBlade.position.y = 0.2;
-    const swordGuard = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.05, 0.05), new THREE.MeshLambertMaterial({ color: 0x555555 }));
+    const swordGuard = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.06), new THREE.MeshLambertMaterial({ color: 0x555555 }));
     swordGuard.position.y = -0.1;
     swordModel.add(swordHandle);
     swordModel.add(swordBlade);
@@ -646,12 +646,12 @@ function init() {
     swordModel.visible = false;
     camera.add(swordModel);
 
-    // Create Axe View Model
+    // Create Axe View Model (Voxel)
     axeModel = new THREE.Group();
-    const axeHandleGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.5);
+    const axeHandleGeo = new THREE.BoxGeometry(0.04, 0.5, 0.04);
     const axeHandleMat = new THREE.MeshLambertMaterial({ color: 0x8b4513 });
     const axeHandle = new THREE.Mesh(axeHandleGeo, axeHandleMat);
-    const axeHeadGeo = new THREE.BoxGeometry(0.2, 0.15, 0.05);
+    const axeHeadGeo = new THREE.BoxGeometry(0.2, 0.15, 0.06);
     const axeHeadMat = new THREE.MeshLambertMaterial({ color: 0x555555 });
     const axeHead = new THREE.Mesh(axeHeadGeo, axeHeadMat);
     axeHead.position.set(0.1, 0.2, 0);
@@ -663,23 +663,23 @@ function init() {
     axeModel.visible = false;
     camera.add(axeModel);
 
-    // Create Rock View Model (Starting tool)
+    // Create Rock View Model (Voxel Starting tool)
     rockModel = new THREE.Group();
-    const rockHandGeo = new THREE.DodecahedronGeometry(0.1);
-    const rockHandMat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+    const rockHandGeo = new THREE.BoxGeometry(0.15, 0.15, 0.15);
+    const rockHandMat = new THREE.MeshLambertMaterial({ color: 0x3a3a40 });
     const rockHand = new THREE.Mesh(rockHandGeo, rockHandMat);
     rockModel.add(rockHand);
     rockModel.position.set(0.3, -0.2, -0.4);
     rockModel.visible = false;
     camera.add(rockModel);
 
-    // Create Apple View Model
+    // Create Apple View Model (Voxel)
     appleModel = new THREE.Group();
-    const appleGeo = new THREE.SphereGeometry(0.08, 16, 16);
+    const appleGeo = new THREE.BoxGeometry(0.12, 0.12, 0.12);
     const appleMat = new THREE.MeshLambertMaterial({ color: 0xff1111 });
     const appleBody = new THREE.Mesh(appleGeo, appleMat);
     
-    const stemGeo = new THREE.CylinderGeometry(0.01, 0.01, 0.04);
+    const stemGeo = new THREE.BoxGeometry(0.02, 0.06, 0.02);
     const stemMat = new THREE.MeshLambertMaterial({ color: 0x5c4033 });
     const appleStem = new THREE.Mesh(stemGeo, stemMat);
     appleStem.position.y = 0.08;
@@ -905,10 +905,12 @@ function init() {
     scene.add(water);
 
     // Generate trees/rocks
-    const trunkGeometry = new THREE.CylinderGeometry(0.6, 0.9, 5, 7);
+    // Voxel-style trees
+    const trunkGeometry = new THREE.BoxGeometry(1.2, 5, 1.2);
     const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x2b1e16 });
-    // Use Dodecahedron for low-poly leafy top instead of a box
-    const leafGeometry = new THREE.DodecahedronGeometry(3.5);
+    const leafGeoBottom = new THREE.BoxGeometry(4, 3, 4);
+    const leafGeoMiddle = new THREE.BoxGeometry(3, 2, 3);
+    const leafGeoTop = new THREE.BoxGeometry(2, 2, 2);
     const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x142b17 });
 
     function getRandomIslandPosition() {
@@ -926,9 +928,9 @@ function init() {
         const pos = getRandomIslandPosition();
         trunk.position.x = pos.x;
         trunk.position.z = pos.z;
-        // Basic height placement based on flat world (will clip through bumpy terrain a bit)
         const groundHeight = getTerrainHeight(trunk.position.x, trunk.position.z);
         trunk.position.y = groundHeight + 2.5; 
+        trunk.rotation.set(0, (Math.floor(Math.random() * 4) * Math.PI) / 2, 0); // Rotate 90 degree increments only
         trunk.castShadow = true;
         trunk.receiveShadow = true;
         trunk.userData = { type: 'wood' };
@@ -936,29 +938,38 @@ function init() {
         objects.push(trunk);
         
         // Leaves (Bottom layer)
-        const leaf = new THREE.Mesh(leafGeometry, leafMaterial);
-        leaf.position.copy(trunk.position);
-        leaf.position.y += 3.0;
-        // Randomize leaf rotation
-        leaf.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-        leaf.castShadow = true;
-        leaf.userData = { type: 'wood' };
-        scene.add(leaf);
-        objects.push(leaf); // For basic raycast collision
+        const leaf1 = new THREE.Mesh(leafGeoBottom, leafMaterial);
+        leaf1.position.copy(trunk.position);
+        leaf1.position.y += 2.5;
+        leaf1.rotation.copy(trunk.rotation);
+        leaf1.castShadow = true;
+        leaf1.userData = { type: 'wood' };
+        scene.add(leaf1);
+        objects.push(leaf1); 
+
+        // Leaves (Middle layer)
+        const leaf2 = new THREE.Mesh(leafGeoMiddle, leafMaterial);
+        leaf2.position.copy(trunk.position);
+        leaf2.position.y += 4.5;
+        leaf2.rotation.copy(trunk.rotation);
+        leaf2.castShadow = true;
+        leaf2.userData = { type: 'wood' };
+        scene.add(leaf2);
+        objects.push(leaf2);
 
         // Leaves (Top layer)
-        const leafTop = new THREE.Mesh(leafGeometry, leafMaterial);
-        leafTop.position.copy(trunk.position);
-        leafTop.position.y += 5.5;
-        leafTop.scale.set(0.7, 0.7, 0.7);
-        leafTop.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-        leafTop.castShadow = true;
-        leafTop.userData = { type: 'wood' };
-        scene.add(leafTop);
-        objects.push(leafTop);
+        const leaf3 = new THREE.Mesh(leafGeoTop, leafMaterial);
+        leaf3.position.copy(trunk.position);
+        leaf3.position.y += 6.0;
+        leaf3.rotation.copy(trunk.rotation);
+        leaf3.castShadow = true;
+        leaf3.userData = { type: 'wood' };
+        scene.add(leaf3);
+        objects.push(leaf3);
     }
 
-    const rockGeometry = new THREE.DodecahedronGeometry(2);
+    const rockGeometry = new THREE.BoxGeometry(3, 2.5, 3);
+    const rockGeometrySmall = new THREE.BoxGeometry(2, 1.5, 2);
     const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x3a3a40 });
     for (let i = 0; i < 150; i++) {
         const rock = new THREE.Mesh(rockGeometry, rockMaterial);
@@ -966,13 +977,26 @@ function init() {
         rock.position.x = pos.x;
         rock.position.z = pos.z;
         const groundHeight = getTerrainHeight(rock.position.x, rock.position.z);
-        rock.position.y = groundHeight + 1;
-        rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        rock.position.y = groundHeight + 1.25;
+        rock.rotation.set(0, (Math.floor(Math.random() * 4) * Math.PI) / 2, 0); // Voxel 90 degree rotation
         rock.castShadow = true;
         rock.receiveShadow = true;
         rock.userData = { type: 'rock', maxHp: 100 };
         scene.add(rock);
         objects.push(rock);
+
+        // Add a smaller block on top for variation
+        if (Math.random() > 0.5) {
+            const rockTop = new THREE.Mesh(rockGeometrySmall, rockMaterial);
+            rockTop.position.copy(rock.position);
+            rockTop.position.y += 2.0;
+            rockTop.rotation.copy(rock.rotation);
+            rockTop.castShadow = true;
+            rockTop.receiveShadow = true;
+            rockTop.userData = { type: 'rock', maxHp: 100 };
+            scene.add(rockTop);
+            objects.push(rockTop);
+        }
     }
     
     // Ores
@@ -985,8 +1009,8 @@ function init() {
             ore.position.x = pos.x;
             ore.position.z = pos.z;
             const groundHeight = getTerrainHeight(ore.position.x, ore.position.z);
-            ore.position.y = groundHeight + 0.8;
-            ore.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            ore.position.y = groundHeight + 1.0;
+            ore.rotation.set(0, (Math.floor(Math.random() * 4) * Math.PI) / 2, 0); // Voxel 90 degree rotation
             ore.castShadow = true;
             ore.receiveShadow = true;
             ore.userData = { type: type, maxHp: maxHp };
@@ -1041,7 +1065,7 @@ function init() {
     cabinMesh.castShadow = true;
     boatGroup.add(cabinMesh);
     // Mast (Broken)
-    const mastMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 10), new THREE.MeshLambertMaterial({ color: 0x3d2922 }));
+    const mastMesh = new THREE.Mesh(new THREE.BoxGeometry(1, 10, 1), new THREE.MeshLambertMaterial({ color: 0x3d2922 }));
     mastMesh.position.set(0, 8, 4);
     mastMesh.rotation.x = Math.PI / 4; // broken look
     mastMesh.castShadow = true;
@@ -1465,17 +1489,16 @@ function init() {
 function spawnDroppedItem(type, position) {
     let geo, mat;
     if (type === 'wood') {
-        geo = new THREE.CylinderGeometry(0.2, 0.2, 0.8);
+        geo = new THREE.BoxGeometry(0.3, 0.8, 0.3);
         mat = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
     } else if (type === 'rock') {
-        geo = new THREE.DodecahedronGeometry(0.3);
-        mat = new THREE.MeshLambertMaterial({ color: 0x888888 });
+        geo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+        mat = new THREE.MeshLambertMaterial({ color: 0x3a3a40 });
     } else if (type === 'apple') {
-        geo = new THREE.SphereGeometry(0.2);
+        geo = new THREE.BoxGeometry(0.3, 0.3, 0.3);
         mat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
     } else if (type === 'coin') {
-        geo = new THREE.CylinderGeometry(0.2, 0.2, 0.05, 8);
-        geo.rotateX(Math.PI / 2); // coin stands up
+        geo = new THREE.BoxGeometry(0.3, 0.3, 0.1);
         mat = new THREE.MeshLambertMaterial({ color: 0xffd700 }); // Gold
     } else if (type === 'sneakers' || type === 'dumbbell' || type === 'dagger') {
         geo = new THREE.BoxGeometry(0.4, 0.4, 0.4);
