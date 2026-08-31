@@ -1380,10 +1380,14 @@ function init() {
                             document.getElementById('hp-bar').style.width = (playerHP / playerMaxHP * 100) + '%';
                         }
                         
-                        // Visual feedback for hit
-                        const defaultColor = obj.userData.type === 'boss' ? 0x333333 : 0xff0000;
-                        obj.material.color.setHex(0xffffff);
-                        setTimeout(() => { if (obj.parent) obj.material.color.setHex(defaultColor); }, 100);
+                        // Visual feedback for hit (handle groups)
+                        obj.children.forEach(child => {
+                            if (child.isMesh && child.material && child.visible !== false) { // Skip invisible hitbox
+                                const oldColor = child.material.color.getHex();
+                                child.material.color.setHex(0xffffff);
+                                setTimeout(() => { if (child.parent) child.material.color.setHex(oldColor); }, 100);
+                            }
+                        });
                         
                         // Pushback
                         const dx = obj.position.x - camera.position.x;
@@ -1716,26 +1720,65 @@ function updateDroppedItems(delta) {
 }
 
 function spawnBoss() {
-    // Big Chunk Boss
-    const bossGeo = new THREE.BoxGeometry(8, 12, 8); // Huge box for now
-    const bossMat = new THREE.MeshLambertMaterial({ color: 0x333333 }); // Dark grey rock
-    const boss = new THREE.Mesh(bossGeo, bossMat);
+    // Big Chunk Boss (Rock Golem)
+    const bossGroup = new THREE.Group();
+    const rockMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+    const rockGeo = new THREE.DodecahedronGeometry(1, 0);
+
+    const torso = new THREE.Mesh(rockGeo, rockMat);
+    torso.scale.set(4, 5, 3);
+    torso.position.y = 6;
+    torso.castShadow = true;
+    bossGroup.add(torso);
+
+    const head = new THREE.Mesh(rockGeo, rockMat);
+    head.scale.set(2, 2, 2);
+    head.position.y = 11.5;
+    head.castShadow = true;
+    bossGroup.add(head);
+
+    const armL = new THREE.Mesh(rockGeo, rockMat);
+    armL.scale.set(1.5, 4, 1.5);
+    armL.position.set(-5, 6, 0);
+    armL.castShadow = true;
+    bossGroup.add(armL);
+    
+    const armR = new THREE.Mesh(rockGeo, rockMat);
+    armR.scale.set(1.5, 4, 1.5);
+    armR.position.set(5, 6, 0);
+    armR.castShadow = true;
+    bossGroup.add(armR);
+
+    const legL = new THREE.Mesh(rockGeo, rockMat);
+    legL.scale.set(1.5, 3, 1.5);
+    legL.position.set(-2, 1.5, 0);
+    legL.castShadow = true;
+    bossGroup.add(legL);
+
+    const legR = new THREE.Mesh(rockGeo, rockMat);
+    legR.scale.set(1.5, 3, 1.5);
+    legR.position.set(2, 1.5, 0);
+    legR.castShadow = true;
+    bossGroup.add(legR);
+
+    const hitboxGeo = new THREE.BoxGeometry(10, 14, 8);
+    const bossHitbox = new THREE.Mesh(hitboxGeo, new THREE.MeshBasicMaterial({ visible: false }));
+    bossHitbox.position.y = 6;
+    bossHitbox.userData = { parentGroup: bossGroup, type: 'boss' };
+    bossGroup.add(bossHitbox);
     
     // Spawn 80 units away from player
     const angle = Math.random() * Math.PI * 2;
-    boss.position.x = camera.position.x + Math.cos(angle) * 80;
-    boss.position.z = camera.position.z + Math.sin(angle) * 80;
-    boss.position.y = getTerrainHeight(boss.position.x, boss.position.z) + 6;
+    bossGroup.position.x = camera.position.x + Math.cos(angle) * 80;
+    bossGroup.position.z = camera.position.z + Math.sin(angle) * 80;
+    bossGroup.position.y = getTerrainHeight(bossGroup.position.x, bossGroup.position.z);
     
-    boss.castShadow = true;
-    boss.receiveShadow = true;
+    bossGroup.userData = { type: 'boss', hp: 500, maxHp: 500, nextAttack: 0, hitbox: bossHitbox };
+    scene.add(bossGroup);
+    objects.push(bossHitbox);
+    monsters.push(bossGroup);
     
-    boss.userData = { type: 'boss', hp: 500, maxHp: 500, nextAttack: 0 };
-    scene.add(boss);
-    objects.push(boss);
-    monsters.push(boss);
-    
-    currentBoss = boss;
+    currentBoss = bossGroup;
     
     // Show UI
     document.getElementById('boss-ui').style.display = 'block';
@@ -1746,23 +1789,53 @@ function updateMonsters(delta) {
     if (isNight && performance.now() > nextMonsterSpawn && monsters.length < 15) { // max 15 monsters
         nextMonsterSpawn = performance.now() + Math.random() * 2000 + 1000; // Spawn every 1-3 seconds
         
-        const mobGeo = new THREE.BoxGeometry(2, 2, 2);
-        const mobMat = new THREE.MeshLambertMaterial({ color: 0xff0000 });
-        const mob = new THREE.Mesh(mobGeo, mobMat);
+        const mobGroup = new THREE.Group();
+        const skinMat = new THREE.MeshLambertMaterial({ color: 0x33aa33 }); // Green goblin skin
+        const clothMat = new THREE.MeshLambertMaterial({ color: 0x552222 }); // Brown clothes
+
+        // Head
+        const head = new THREE.Mesh(new THREE.DodecahedronGeometry(0.8, 0), skinMat);
+        head.position.y = 2.5;
+        head.castShadow = true;
+        mobGroup.add(head);
+
+        // Body
+        const body = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 1.5, 6), clothMat);
+        body.position.y = 1.25;
+        body.castShadow = true;
+        mobGroup.add(body);
+
+        // Arms
+        const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1, 5), skinMat);
+        armL.position.set(-0.8, 1.5, 0);
+        armL.rotation.z = Math.PI / 4;
+        armL.castShadow = true;
+        mobGroup.add(armL);
+        
+        const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 1, 5), skinMat);
+        armR.position.set(0.8, 1.5, 0);
+        armR.rotation.z = -Math.PI / 4;
+        armR.castShadow = true;
+        mobGroup.add(armR);
+
+        // Hitbox
+        const hitboxGeo = new THREE.BoxGeometry(2, 3.5, 2);
+        const hitboxMesh = new THREE.Mesh(hitboxGeo, new THREE.MeshBasicMaterial({ visible: false }));
+        hitboxMesh.position.y = 1.5;
+        hitboxMesh.userData = { parentGroup: mobGroup, type: 'monster' };
+        mobGroup.add(hitboxMesh);
         
         // Spawn around player
         const angle = Math.random() * Math.PI * 2;
         const distance = 40 + Math.random() * 20; // 40-60 units away
-        mob.position.x = camera.position.x + Math.cos(angle) * distance;
-        mob.position.z = camera.position.z + Math.sin(angle) * distance;
-        mob.position.y = 1;
-        mob.castShadow = true;
-        mob.receiveShadow = true;
+        mobGroup.position.x = camera.position.x + Math.cos(angle) * distance;
+        mobGroup.position.z = camera.position.z + Math.sin(angle) * distance;
+        mobGroup.position.y = getTerrainHeight(mobGroup.position.x, mobGroup.position.z);
         
-        mob.userData = { type: 'monster', hp: 3, nextAttack: 0 };
-        scene.add(mob);
-        objects.push(mob);
-        monsters.push(mob);
+        mobGroup.userData = { type: 'monster', hp: 3, nextAttack: 0, hitbox: hitboxMesh };
+        scene.add(mobGroup);
+        objects.push(hitboxMesh);
+        monsters.push(mobGroup);
     }
 
     // Monster AI logic
