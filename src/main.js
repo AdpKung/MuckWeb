@@ -579,18 +579,30 @@ function init() {
     celestialGroup = new THREE.Group();
     scene.add(celestialGroup);
 
-    const sunGeo = new THREE.PlaneGeometry(60, 60);
-    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdd44, fog: false, side: THREE.DoubleSide });
+    const sunGeo = new THREE.SphereGeometry(30, 32, 32);
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xfff0aa, fog: false }); // Soft bright yellow
     const sunMesh = new THREE.Mesh(sunGeo, sunMat);
-    sunMesh.position.set(0, 350, 0); // High up in the sky
-    sunMesh.rotation.x = Math.PI / 2; // Face the camera at the center
+    sunMesh.position.set(0, 350, 0); 
+    
+    // Sun Glow effect
+    const sunGlowGeo = new THREE.SphereGeometry(36, 32, 32);
+    const sunGlowMat = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.3, fog: false });
+    const sunGlow = new THREE.Mesh(sunGlowGeo, sunGlowMat);
+    sunMesh.add(sunGlow);
+    
     celestialGroup.add(sunMesh);
 
-    const moonGeo = new THREE.PlaneGeometry(40, 40);
-    const moonMat = new THREE.MeshBasicMaterial({ color: 0xddddff, fog: false, side: THREE.DoubleSide });
+    const moonGeo = new THREE.SphereGeometry(22, 32, 32);
+    const moonMat = new THREE.MeshBasicMaterial({ color: 0xddddff, fog: false });
     const moonMesh = new THREE.Mesh(moonGeo, moonMat);
-    moonMesh.position.set(0, -350, 0); // Opposite side
-    moonMesh.rotation.x = -Math.PI / 2; // Face the camera at the center
+    moonMesh.position.set(0, -350, 0); 
+    
+    // Moon Glow effect
+    const moonGlowGeo = new THREE.SphereGeometry(26, 32, 32);
+    const moonGlowMat = new THREE.MeshBasicMaterial({ color: 0xaaaaff, transparent: true, opacity: 0.2, fog: false });
+    const moonGlow = new THREE.Mesh(moonGlowGeo, moonGlowMat);
+    moonMesh.add(moonGlow);
+    
     celestialGroup.add(moonMesh);
 
     // Setup Light
