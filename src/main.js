@@ -1365,6 +1365,10 @@ function init() {
                         mobDamage = 35; // Great at fighting
                         if (obj.userData.type === 'monster' || obj.userData.type === 'boss') isCrit = true;
                     }
+                    
+                    // Apply Dumbbell powerup bonus (Strength)
+                    objDamage += powerups.dumbbell * 2;
+                    mobDamage += powerups.dumbbell * 2;
 
                     if (obj.userData.type === 'monster' || obj.userData.type === 'boss') {
                         obj.userData.hp -= mobDamage;
@@ -2051,11 +2055,11 @@ function animate() {
         direction.x = Number(moveRight) - Number(moveLeft);
         direction.normalize(); // this ensures consistent movements in all directions
 
-        let speed = 40.0;
+        let speed = 40.0 + (powerups.sneakers * 3.0);
         const isMoving = moveForward || moveBackward || moveLeft || moveRight;
 
         if (isSprinting && isMoving && playerStamina > 0) {
-            speed = 70.0;
+            speed = 70.0 + (powerups.sneakers * 5.0);
             playerStamina = Math.max(0, playerStamina - delta * 20); // drain 20 per sec
         } else {
             playerStamina = Math.min(100, playerStamina + delta * 15); // regen 15 per sec
