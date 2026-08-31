@@ -104,7 +104,7 @@ let droppedItems = [];
 const clouds = [];
 let nextMonsterSpawn = 0;
 
-let playerCoins = 0;
+let playerCoins = 1000;
 let playerMaxHP = 100;
 let powerups = { sneakers: 0, dumbbell: 0, dagger: 0 };
 
