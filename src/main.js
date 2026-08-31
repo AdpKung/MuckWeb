@@ -1031,7 +1031,6 @@ function init() {
     spawnOre('adamantite_ore', 0x00ff66, 10, 600);
 
     // Chest Generation
-    const chestGeo = new THREE.BoxGeometry(1.5, 1, 1.5);
     for (let i = 0; i < 100; i++) {
         let chestType, chestColor, cost, powerup;
         const r = Math.random();
@@ -1042,19 +1041,58 @@ function init() {
         } else {
             chestType = 'chest_gold'; chestColor = 0xffd700; cost = 100; powerup = 'dagger';
         }
+
+        const chestGroup = new THREE.Group();
+        
+        // Materials
         const chestMat = new THREE.MeshLambertMaterial({ color: chestColor });
-        const chest = new THREE.Mesh(chestGeo, chestMat);
+        const metalMat = new THREE.MeshLambertMaterial({ color: 0x333333 });
+
+        // Base Box
+        const baseMesh = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.7, 1.0), chestMat);
+        baseMesh.position.y = 0.35;
+        baseMesh.castShadow = true;
+        baseMesh.receiveShadow = true;
+        chestGroup.add(baseMesh);
+
+        // Curved Lid (Half Cylinder)
+        const lidMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.5, 12, 1, false, 0, Math.PI), chestMat);
+        lidMesh.rotation.z = Math.PI / 2;
+        lidMesh.position.y = 0.7; // sits on top of base
+        lidMesh.castShadow = true;
+        lidMesh.receiveShadow = true;
+        chestGroup.add(lidMesh);
+
+        // Lock
+        const lockMesh = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.3, 0.1), metalMat);
+        lockMesh.position.set(0, 0.5, 0.55);
+        lockMesh.castShadow = true;
+        chestGroup.add(lockMesh);
+
+        // Side Metal Bands
+        const band1 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.72, 1.02), metalMat);
+        band1.position.set(-0.5, 0.35, 0);
+        chestGroup.add(band1);
+        const band2 = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.72, 1.02), metalMat);
+        band2.position.set(0.5, 0.35, 0);
+        chestGroup.add(band2);
+
+        // Invisible Hitbox for Raycasting
+        const hitboxGeo = new THREE.BoxGeometry(1.6, 1.4, 1.1);
+        const hitboxMesh = new THREE.Mesh(hitboxGeo, new THREE.MeshBasicMaterial({ visible: false }));
+        hitboxMesh.position.y = 0.6;
+        
+        chestGroup.userData = { type: chestType, cost: cost, powerup: powerup };
+        hitboxMesh.userData = { parentGroup: chestGroup, type: chestType };
+        chestGroup.add(hitboxMesh);
+
+        // Placement
         const pos = getRandomIslandPosition();
-        chest.position.x = pos.x;
-        chest.position.z = pos.z;
-        const groundHeight = getTerrainHeight(chest.position.x, chest.position.z);
-        chest.position.y = groundHeight + 0.5;
-        chest.rotation.y = Math.random() * Math.PI;
-        chest.castShadow = true;
-        chest.receiveShadow = true;
-        chest.userData = { type: chestType, cost: cost, powerup: powerup };
-        scene.add(chest);
-        objects.push(chest);
+        chestGroup.position.set(pos.x, getTerrainHeight(pos.x, pos.z), pos.z);
+        chestGroup.rotation.y = Math.random() * Math.PI;
+
+        scene.add(chestGroup);
+        objects.push(hitboxMesh); // Only the hitbox handles collisions/raycasts
     }
 
     // Shipwreck Spawning
