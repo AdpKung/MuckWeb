@@ -5,7 +5,7 @@ import { generateTextures } from './pixelArt.js'
 
 generateTextures();
 let camera, scene, renderer, controls;
-let skyMesh;
+let celestialGroup;
 let dirLight, hemiLight, stars;
 
 const objects = [];
@@ -572,25 +572,26 @@ animate();
 function init() {
     // Setup Scene
     scene = new THREE.Scene();
-    // scene.background is left out so it's black (behind the sky cylinder)
+    // scene.background is handled in animate()
     scene.fog = new THREE.Fog(0x4a5d72, 80, 400); // Fog color will be updated in animate
 
-    // Retro Pixel Sky Cylinder
-    const skyTex = new THREE.TextureLoader().load('./sky.png');
-    skyTex.minFilter = THREE.NearestFilter;
-    skyTex.magFilter = THREE.NearestFilter;
-    skyTex.wrapS = THREE.RepeatWrapping;
-    skyTex.repeat.set(4, 1); 
+    // Sun and Moon (Dynamic Sky)
+    celestialGroup = new THREE.Group();
+    scene.add(celestialGroup);
 
-    const skyGeo = new THREE.CylinderGeometry(400, 400, 400, 32, 1, true);
-    const skyMat = new THREE.MeshBasicMaterial({ 
-        map: skyTex, 
-        side: THREE.BackSide, 
-        fog: false,
-        color: 0xffffff
-    });
-    skyMesh = new THREE.Mesh(skyGeo, skyMat);
-    scene.add(skyMesh);
+    const sunGeo = new THREE.PlaneGeometry(60, 60);
+    const sunMat = new THREE.MeshBasicMaterial({ color: 0xffdd44, fog: false, side: THREE.DoubleSide });
+    const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+    sunMesh.position.set(0, 350, 0); // High up in the sky
+    sunMesh.rotation.x = Math.PI / 2; // Face the camera at the center
+    celestialGroup.add(sunMesh);
+
+    const moonGeo = new THREE.PlaneGeometry(40, 40);
+    const moonMat = new THREE.MeshBasicMaterial({ color: 0xddddff, fog: false, side: THREE.DoubleSide });
+    const moonMesh = new THREE.Mesh(moonGeo, moonMat);
+    moonMesh.position.set(0, -350, 0); // Opposite side
+    moonMesh.rotation.x = -Math.PI / 2; // Face the camera at the center
+    celestialGroup.add(moonMesh);
 
     // Setup Light
     hemiLight = new THREE.HemisphereLight(0x9aaacb, 0x223322, 0.6); // Brighter ambient
@@ -1934,22 +1935,11 @@ function animate() {
         if (dirLight) dirLight.intensity = lightIntensity;
         if (stars) stars.material.opacity = starOpacity;
         
-        if (skyMesh) {
-            skyMesh.position.copy(camera.position);
-            // Rotate clouds/sky slowly
-            skyMesh.rotation.y += globalDelta * 0.02;
-            
-            // Tint texture darker at night
-            let skyTint = new THREE.Color(0xffffff);
-            if (isNight) {
-                skyTint = new THREE.Color(0x222244);
-            } else {
-                const transitionNight = Math.max(0, Math.min(1, (cycleProgress - 0.4) * 10));
-                skyTint.lerp(new THREE.Color(0x222244), transitionNight);
-                const transitionDay = Math.max(0, Math.min(1, (cycleProgress - 0.9) * 10));
-                skyTint.lerp(new THREE.Color(0xffffff), transitionDay);
-            }
-            skyMesh.material.color = skyTint;
+        if (celestialGroup) {
+            celestialGroup.position.copy(camera.position);
+            // Rotate based on day/night cycle
+            // cycleProgress 0 to 1. 0.25 is noon (sun up), 0.75 is midnight (moon up)
+            celestialGroup.rotation.z = (0.25 - cycleProgress) * Math.PI * 2;
         }
 
         // Monster Logic
