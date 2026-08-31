@@ -5,6 +5,7 @@ import { generateTextures } from './pixelArt.js'
 
 generateTextures();
 let camera, scene, renderer, controls;
+let skyMesh;
 let dirLight, hemiLight, stars;
 
 const objects = [];
@@ -571,8 +572,25 @@ animate();
 function init() {
     // Setup Scene
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x4a5d72); // Slightly lighter overcast sky
-    scene.fog = new THREE.Fog(0x4a5d72, 80, 400); // Push fog back a bit
+    // scene.background is left out so it's black (behind the sky cylinder)
+    scene.fog = new THREE.Fog(0x4a5d72, 80, 400); // Fog color will be updated in animate
+
+    // Retro Pixel Sky Cylinder
+    const skyTex = new THREE.TextureLoader().load('./sky.png');
+    skyTex.minFilter = THREE.NearestFilter;
+    skyTex.magFilter = THREE.NearestFilter;
+    skyTex.wrapS = THREE.RepeatWrapping;
+    skyTex.repeat.set(4, 1); 
+
+    const skyGeo = new THREE.CylinderGeometry(400, 400, 400, 32, 1, true);
+    const skyMat = new THREE.MeshBasicMaterial({ 
+        map: skyTex, 
+        side: THREE.BackSide, 
+        fog: false,
+        color: 0xffffff
+    });
+    skyMesh = new THREE.Mesh(skyGeo, skyMat);
+    scene.add(skyMesh);
 
     // Setup Light
     hemiLight = new THREE.HemisphereLight(0x9aaacb, 0x223322, 0.6); // Brighter ambient
@@ -1911,11 +1929,28 @@ function animate() {
                 starOpacity = 1 - transitionDay;
             }
         }
-        
         scene.background = skyColor;
         scene.fog.color = skyColor;
         if (dirLight) dirLight.intensity = lightIntensity;
         if (stars) stars.material.opacity = starOpacity;
+        
+        if (skyMesh) {
+            skyMesh.position.copy(camera.position);
+            // Rotate clouds/sky slowly
+            skyMesh.rotation.y += globalDelta * 0.02;
+            
+            // Tint texture darker at night
+            let skyTint = new THREE.Color(0xffffff);
+            if (isNight) {
+                skyTint = new THREE.Color(0x222244);
+            } else {
+                const transitionNight = Math.max(0, Math.min(1, (cycleProgress - 0.4) * 10));
+                skyTint.lerp(new THREE.Color(0x222244), transitionNight);
+                const transitionDay = Math.max(0, Math.min(1, (cycleProgress - 0.9) * 10));
+                skyTint.lerp(new THREE.Color(0xffffff), transitionDay);
+            }
+            skyMesh.material.color = skyTint;
+        }
 
         // Monster Logic
         updateMonsters(globalDelta);
