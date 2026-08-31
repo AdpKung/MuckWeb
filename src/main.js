@@ -973,8 +973,7 @@ function init() {
         objects.push(leaf3);
     }
 
-    const rockGeometry = new THREE.BoxGeometry(3, 2.5, 3);
-    const rockGeometrySmall = new THREE.BoxGeometry(2, 1.5, 2);
+    const rockGeometry = new THREE.DodecahedronGeometry(1.8, 1);
     const rockMaterial = new THREE.MeshLambertMaterial({ color: 0x3a3a40 });
     for (let i = 0; i < 150; i++) {
         const rock = new THREE.Mesh(rockGeometry, rockMaterial);
@@ -982,45 +981,62 @@ function init() {
         rock.position.x = pos.x;
         rock.position.z = pos.z;
         const groundHeight = getTerrainHeight(rock.position.x, rock.position.z);
-        rock.position.y = groundHeight + 1.25;
-        rock.rotation.set(0, (Math.floor(Math.random() * 4) * Math.PI) / 2, 0); // Voxel 90 degree rotation
+        rock.position.y = groundHeight + 0.8;
+        rock.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+        // Random scale for variety
+        rock.scale.set(1 + Math.random()*0.5, 0.6 + Math.random()*0.5, 1 + Math.random()*0.5);
         rock.castShadow = true;
         rock.receiveShadow = true;
-        rock.userData = { type: 'rock', maxHp: 100 };
+        rock.userData = { type: 'rock', maxHp: 100, hp: 100 };
         scene.add(rock);
         objects.push(rock);
-
-        // Add a smaller block on top for variation
-        if (Math.random() > 0.5) {
-            const rockTop = new THREE.Mesh(rockGeometrySmall, rockMaterial);
-            rockTop.position.copy(rock.position);
-            rockTop.position.y += 2.0;
-            rockTop.rotation.copy(rock.rotation);
-            rockTop.castShadow = true;
-            rockTop.receiveShadow = true;
-            rockTop.userData = { type: 'rock', maxHp: 100 };
-            scene.add(rockTop);
-            objects.push(rockTop);
-        }
     }
     
-    // Ores
+    const baseOreGeo = new THREE.DodecahedronGeometry(1.5, 1);
+    const crystalGeo = new THREE.ConeGeometry(0.3, 1.0, 4);
+
     function spawnOre(type, color, count, maxHp) {
-        const mat = new THREE.MeshLambertMaterial({ color: color });
+        const crystalMat = new THREE.MeshLambertMaterial({ color: color });
+        const baseMat = new THREE.MeshLambertMaterial({ color: 0x4a4a50 });
+
         for (let i = 0; i < count; i++) {
-            const ore = new THREE.Mesh(rockGeometry, mat);
-            ore.scale.set(0.8, 0.8, 0.8);
+            const oreGroup = new THREE.Group();
+            
+            // Base rock
+            const baseRock = new THREE.Mesh(baseOreGeo, baseMat);
+            baseRock.castShadow = true;
+            baseRock.receiveShadow = true;
+            baseRock.scale.set(1 + Math.random()*0.3, 0.7 + Math.random()*0.3, 1 + Math.random()*0.3);
+            oreGroup.add(baseRock);
+
+            // Crystals sticking out
+            const numCrystals = 3 + Math.floor(Math.random() * 4);
+            for(let j=0; j<numCrystals; j++) {
+                const crystal = new THREE.Mesh(crystalGeo, crystalMat);
+                const phi = Math.random() * Math.PI;
+                const theta = Math.random() * Math.PI * 2;
+                const r = 1.3;
+                crystal.position.set(r * Math.sin(phi) * Math.cos(theta), r * Math.cos(phi), r * Math.sin(phi) * Math.sin(theta));
+                crystal.lookAt(0,0,0);
+                crystal.rotateX(Math.PI / 2); // point outward
+                crystal.castShadow = true;
+                oreGroup.add(crystal);
+            }
+            
+            // Hitbox
+            const hitboxGeo = new THREE.BoxGeometry(2.5, 2.5, 2.5);
+            const hitboxMesh = new THREE.Mesh(hitboxGeo, new THREE.MeshBasicMaterial({ visible: false }));
+            hitboxMesh.userData = { parentGroup: oreGroup, type: type };
+            oreGroup.add(hitboxMesh);
+            
+            oreGroup.userData = { type: type, maxHp: maxHp, hp: maxHp };
+
             const pos = getRandomIslandPosition();
-            ore.position.x = pos.x;
-            ore.position.z = pos.z;
-            const groundHeight = getTerrainHeight(ore.position.x, ore.position.z);
-            ore.position.y = groundHeight + 1.0;
-            ore.rotation.set(0, (Math.floor(Math.random() * 4) * Math.PI) / 2, 0); // Voxel 90 degree rotation
-            ore.castShadow = true;
-            ore.receiveShadow = true;
-            ore.userData = { type: type, maxHp: maxHp };
-            scene.add(ore);
-            objects.push(ore);
+            oreGroup.position.set(pos.x, getTerrainHeight(pos.x, pos.z) + 0.8, pos.z);
+            oreGroup.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            
+            scene.add(oreGroup);
+            objects.push(hitboxMesh); // for raycaster
         }
     }
     
