@@ -634,7 +634,7 @@ function init() {
     }
 
     // Setup Light
-    hemiLight = new THREE.HemisphereLight(0x9aaacb, 0x223322, 0.6); // Brighter ambient
+    hemiLight = new THREE.HemisphereLight(0x9aaacb, 0x223322, 1.0); // Brighter ambient (was 0.6)
     hemiLight.position.set(0.5, 1, 0.75);
     scene.add(hemiLight);
 
@@ -1955,26 +1955,26 @@ function animate() {
         }
 
         // Interpolate sky color and lighting
-        let skyColor = new THREE.Color(0x4b0082); // Retro Purple Day
-        let lightIntensity = 0.8; // Brighter day light
+        let skyColor = new THREE.Color(0x6a3da2); // Brighter Purple Day
+        let lightIntensity = 1.0; // Max day light
         let starOpacity = 0;
         
         if (isNight) {
-            skyColor = new THREE.Color(0x110022); // Darker purple night
-            lightIntensity = 0.2; // Brighter night light
+            skyColor = new THREE.Color(0x2a1b40); // Lighter purple night (was pitch black)
+            lightIntensity = 0.4; // Brighter night light (easier to see)
             starOpacity = 1;
         } else {
             const transitionNight = Math.max(0, Math.min(1, (cycleProgress - 0.4) * 10)); // fade to night at 0.4-0.5
-            skyColor.lerp(new THREE.Color(0x110022), transitionNight);
+            skyColor.lerp(new THREE.Color(0x2a1b40), transitionNight);
             
             const transitionDay = Math.max(0, Math.min(1, (cycleProgress - 0.9) * 10)); // fade to day at 0.9-1.0
-            skyColor.lerp(new THREE.Color(0x4b0082), transitionDay);
+            skyColor.lerp(new THREE.Color(0x6a3da2), transitionDay);
             
             if (cycleProgress > 0.4 && cycleProgress < 0.5) {
-                lightIntensity = 0.8 - (transitionNight * 0.6); // from 0.8 down to 0.2
+                lightIntensity = 1.0 - (transitionNight * 0.6); // from 1.0 down to 0.4
                 starOpacity = transitionNight;
             } else if (cycleProgress > 0.9 && cycleProgress < 1.0) {
-                lightIntensity = 0.2 + (transitionDay * 0.6); // from 0.2 up to 0.8
+                lightIntensity = 0.4 + (transitionDay * 0.6); // from 0.4 up to 1.0
                 starOpacity = 1 - transitionDay;
             }
         }
