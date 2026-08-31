@@ -1093,11 +1093,15 @@ function init() {
     objects.push(boatHitbox); // for raycasting
 
     // Renderer Setup
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer = new THREE.WebGLRenderer({ antialias: false }); // No antialiasing for retro look
+    
+    // Pixelate the game by rendering at 1/3rd or 1/4th of the screen resolution
+    const retroResolutionScale = 0.33; 
+    renderer.setPixelRatio(retroResolutionScale);
+    
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type = THREE.BasicShadowMap; // Jagged, retro shadows
     document.body.appendChild(renderer.domElement);
 
     addItem('rock', 1); // Start with a rock
@@ -1838,20 +1842,20 @@ function animate() {
         }
 
         // Interpolate sky color and lighting
-        let skyColor = new THREE.Color(0x4a5d72); // Lighter Dark Fantasy Day
+        let skyColor = new THREE.Color(0x4b0082); // Retro Purple Day
         let lightIntensity = 0.8; // Brighter day light
         let starOpacity = 0;
         
         if (isNight) {
-            skyColor = new THREE.Color(0x060614); // Slightly brighter night
+            skyColor = new THREE.Color(0x110022); // Darker purple night
             lightIntensity = 0.2; // Brighter night light
             starOpacity = 1;
         } else {
             const transitionNight = Math.max(0, Math.min(1, (cycleProgress - 0.4) * 10)); // fade to night at 0.4-0.5
-            skyColor.lerp(new THREE.Color(0x060614), transitionNight);
+            skyColor.lerp(new THREE.Color(0x110022), transitionNight);
             
             const transitionDay = Math.max(0, Math.min(1, (cycleProgress - 0.9) * 10)); // fade to day at 0.9-1.0
-            skyColor.lerp(new THREE.Color(0x4a5d72), transitionDay);
+            skyColor.lerp(new THREE.Color(0x4b0082), transitionDay);
             
             if (cycleProgress > 0.4 && cycleProgress < 0.5) {
                 lightIntensity = 0.8 - (transitionNight * 0.6); // from 0.8 down to 0.2
