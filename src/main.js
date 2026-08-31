@@ -908,12 +908,10 @@ function init() {
     scene.add(water);
 
     // Generate trees/rocks
-    // Voxel-style trees
-    const trunkGeometry = new THREE.BoxGeometry(1.2, 5, 1.2);
+    // Realistic Low-poly Trees
+    const trunkGeometry = new THREE.CylinderGeometry(0.6, 1.0, 6, 7);
     const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x2b1e16 });
-    const leafGeoBottom = new THREE.BoxGeometry(4, 3, 4);
-    const leafGeoMiddle = new THREE.BoxGeometry(3, 2, 3);
-    const leafGeoTop = new THREE.BoxGeometry(2, 2, 2);
+    const leafGeo = new THREE.DodecahedronGeometry(2.5, 0);
     const leafMaterial = new THREE.MeshLambertMaterial({ color: 0x142b17 });
 
     function getRandomIslandPosition() {
@@ -929,48 +927,42 @@ function init() {
     for (let i = 0; i < 200; i++) {
         const treeGroup = new THREE.Group();
         const pos = getRandomIslandPosition();
-        treeGroup.position.x = pos.x;
-        treeGroup.position.z = pos.z;
-        const groundHeight = getTerrainHeight(pos.x, pos.z);
-        treeGroup.position.y = groundHeight; 
-        treeGroup.rotation.set(0, (Math.floor(Math.random() * 4) * Math.PI) / 2, 0); // Rotate 90 degree increments only
+        treeGroup.position.set(pos.x, getTerrainHeight(pos.x, pos.z), pos.z);
+        treeGroup.rotation.y = Math.random() * Math.PI * 2; // Natural random rotation
         treeGroup.userData = { type: 'wood', hp: 100, maxHp: 100 };
         scene.add(treeGroup);
-        // We do NOT add the group to objects directly, because raycast needs meshes.
-        // We'll add the child meshes to objects and link them to the group.
 
-        // Trunk (height 5, centered at 2.5)
+        // Trunk
         const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
-        trunk.position.y = 2.5; 
+        trunk.position.y = 3.0; // Center of height 6
         trunk.castShadow = true;
         trunk.receiveShadow = true;
-        trunk.userData = { type: 'wood', parentGroup: treeGroup };
         treeGroup.add(trunk);
-        objects.push(trunk);
         
-        // Leaves (Bottom layer)
-        const leaf1 = new THREE.Mesh(leafGeoBottom, leafMaterial);
-        leaf1.position.y = 5.5;
-        leaf1.castShadow = true;
-        leaf1.userData = { type: 'wood', parentGroup: treeGroup };
-        treeGroup.add(leaf1);
-        objects.push(leaf1); 
+        // Leaves cluster (3-5 puffy low-poly clumps)
+        const numLeaves = 3 + Math.floor(Math.random() * 3);
+        for(let j=0; j<numLeaves; j++) {
+            const leaf = new THREE.Mesh(leafGeo, leafMaterial);
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * 1.5;
+            leaf.position.set(
+                Math.cos(angle) * radius,
+                5.0 + Math.random() * 2.5, // height varying from 5.0 to 7.5
+                Math.sin(angle) * radius
+            );
+            leaf.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+            leaf.scale.setScalar(0.7 + Math.random() * 0.5);
+            leaf.castShadow = true;
+            treeGroup.add(leaf);
+        }
 
-        // Leaves (Middle layer)
-        const leaf2 = new THREE.Mesh(leafGeoMiddle, leafMaterial);
-        leaf2.position.y = 7.5;
-        leaf2.castShadow = true;
-        leaf2.userData = { type: 'wood', parentGroup: treeGroup };
-        treeGroup.add(leaf2);
-        objects.push(leaf2);
-
-        // Leaves (Top layer)
-        const leaf3 = new THREE.Mesh(leafGeoTop, leafMaterial);
-        leaf3.position.y = 9.0;
-        leaf3.castShadow = true;
-        leaf3.userData = { type: 'wood', parentGroup: treeGroup };
-        treeGroup.add(leaf3);
-        objects.push(leaf3);
+        // Invisible Hitbox for Raycasting (covers trunk and leaves)
+        const hitboxGeo = new THREE.BoxGeometry(3, 9, 3);
+        const hitboxMesh = new THREE.Mesh(hitboxGeo, new THREE.MeshBasicMaterial({ visible: false }));
+        hitboxMesh.position.y = 4.5;
+        hitboxMesh.userData = { type: 'wood', parentGroup: treeGroup };
+        treeGroup.add(hitboxMesh);
+        objects.push(hitboxMesh); 
     }
 
     const rockGeometry = new THREE.DodecahedronGeometry(1.8, 1);
