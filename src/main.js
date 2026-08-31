@@ -101,6 +101,7 @@ const cycleLength = 300; // 5 minutes per day/night cycle
 let isNight = false;
 let monsters = [];
 let droppedItems = [];
+const clouds = [];
 let nextMonsterSpawn = 0;
 
 let playerCoins = 0;
@@ -604,6 +605,33 @@ function init() {
     moonMesh.add(moonGlow);
     
     celestialGroup.add(moonMesh);
+
+    // Initialize Clouds
+    const cloudMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, fog: false });
+    for (let i = 0; i < 30; i++) {
+        const cloudGroup = new THREE.Group();
+        // A cloud is made of 3 to 6 overlapping boxes
+        const numBlocks = 3 + Math.floor(Math.random() * 4);
+        for(let j=0; j<numBlocks; j++) {
+            const w = 20 + Math.random() * 20;
+            const h = 5 + Math.random() * 10;
+            const d = 20 + Math.random() * 20;
+            const box = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), cloudMat);
+            box.position.set(
+                (Math.random() - 0.5) * 30,
+                (Math.random() - 0.5) * 5,
+                (Math.random() - 0.5) * 30
+            );
+            cloudGroup.add(box);
+        }
+        cloudGroup.position.set(
+            Math.random() * 1000 - 500,
+            200 + Math.random() * 50,
+            Math.random() * 1000 - 500
+        );
+        scene.add(cloudGroup);
+        clouds.push(cloudGroup);
+    }
 
     // Setup Light
     hemiLight = new THREE.HemisphereLight(0x9aaacb, 0x223322, 0.6); // Brighter ambient
@@ -1957,10 +1985,22 @@ function animate() {
         
         if (celestialGroup) {
             celestialGroup.position.copy(camera.position);
-            // Rotate based on day/night cycle
-            // cycleProgress 0 to 1. 0.25 is noon (sun up), 0.75 is midnight (moon up)
             celestialGroup.rotation.z = (0.25 - cycleProgress) * Math.PI * 2;
         }
+
+        // Animate Clouds
+        clouds.forEach(cloud => {
+            cloud.position.x += globalDelta * 10;
+            
+            // Keep clouds wrapped around the camera (within a 1000x1000 area)
+            const dx = cloud.position.x - camera.position.x;
+            if (dx > 500) cloud.position.x -= 1000;
+            else if (dx < -500) cloud.position.x += 1000;
+            
+            const dz = cloud.position.z - camera.position.z;
+            if (dz > 500) cloud.position.z -= 1000;
+            else if (dz < -500) cloud.position.z += 1000;
+        });
 
         // Monster Logic
         updateMonsters(globalDelta);
