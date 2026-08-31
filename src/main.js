@@ -97,7 +97,7 @@ let isSprinting = false;
 let isDead = false;
 let dayTime = 0;
 let dayCount = 1;
-const cycleLength = 1440; // 24 minutes per day/night cycle
+const cycleLength = 300; // 5 minutes per day/night cycle
 let isNight = false;
 let monsters = [];
 let droppedItems = [];
@@ -1386,13 +1386,21 @@ function init() {
                                 if (index > -1) objects.splice(index, 1);
                             }
                             
+                            const dropCount = 5 + Math.floor(Math.random() * 8); // 5 to 12 items
+                            
                             if (obj.userData.type === 'wood') {
-                                spawnDroppedItem('wood', obj.position);
+                                for(let d = 0; d < dropCount; d++) {
+                                    spawnDroppedItem('wood', obj.position);
+                                }
                                 if (Math.random() < 0.3) {
-                                    spawnDroppedItem('apple', obj.position);
+                                    const appleCount = 1 + Math.floor(Math.random() * 3);
+                                    for(let a = 0; a < appleCount; a++) spawnDroppedItem('apple', obj.position);
                                 }
                             } else {
-                                spawnDroppedItem(obj.userData.type, obj.position);
+                                // For ores and rocks
+                                for(let d = 0; d < dropCount; d++) {
+                                    spawnDroppedItem(obj.userData.type, obj.position);
+                                }
                             }
                         }
                     }
